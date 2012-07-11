@@ -18,6 +18,7 @@ from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION
 from widgets import CheckboxWidget
 from ressources import CalRessource
 
+
 class PyCalCurse(object):
 
     def __init__(self):
@@ -95,7 +96,11 @@ class PyCalCurse(object):
         if not self.calendar_widget:
             self.calendar_widget = curses.newwin(12, 24, 0, 56)
             self.calendar_widget.border()
-            self.calendar_widget.addstr(1, 8, "Kalender")
+            self.calendar_widget.addstr(
+                1,
+                self._centralized_pos(24, "Kalender"),
+                "Kalender"
+            )
             self.calendar_widget.addstr(2, 1, "----------------------")
             self.calendar_widget.refresh()
         else:
@@ -125,30 +130,48 @@ class PyCalCurse(object):
     def _add_event(self):
         input_win = curses.newwin(4, 70, 10, 5)
         input_win.border()
-        input_win.addstr(1, 1, "Bezeichnung des Events")
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(1, 1, "Bezeichnung des Events", curses.A_REVERSE)
         input_win.touchwin()
         curses.echo()
         input_win.move(2, 1)
         input_win.refresh()
         name = input_win.getstr()
-        input_win.addstr(1, 1, (" " * 68))
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
         input_win.addstr(1, 1, "Beginn des Termines (HH:MM)", curses.A_REVERSE)
         input_win.move(2, 1)
         start_time = input_win.getstr()
-        input_win.addstr(1, 1, (" " * 68))
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
         input_win.addstr(1, 1, "Ende des Termines (HH:MM)", curses.A_REVERSE)
         input_win.move(2, 1)
         end_time = input_win.getstr()
-        input_win.addstr(1, 1, (" " * 68))
+        input_win.clear()
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
-        input_win.resize(len(self.calendar_ressources), 70)
+        input_win.resize((3 + len(self.calendar_ressources)), 70)
         input_win.border()
-        #input_win.addstr(1, 1, "In welchen Ressourcen?", curses.A_REVERSE)
-        #input_win.move(2, 1)
-        #input_win.refresh()
-        #input_win.getstr()
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(2, 1, (" " * 68))
+        input_win.addstr(1, 1, "In welche Kalender speichern?", curses.A_REVERSE)
+        curses.noecho()
+        line_pos = 2
+        checkbox_list = []
+        for ressource in self.calendar_ressources:
+            ressource_checkbox = CheckboxWidget(
+                input_win,
+                line_pos,
+                1,
+                ressource
+            )
+            checkbox_list.append(ressource_checkbox)
+            line_pos += 1
+        input_win.move(2, 2)
+        input_win.refresh()
+        curses.curs_set(2)
+        input_win.getstr()
+        curses.curs_set(0)
 
     def _add_ressource(self):
         # ToDo
@@ -161,7 +184,12 @@ class PyCalCurse(object):
     def _show_license_box(self):
         info_box = curses.newwin(22, 71, 1, 5)
         info_box.border()
-        version = open('versions.txt', 'r').read()
+        version = "unknown"
+        try:
+            with open('versions.txt', 'r') as version_file:
+                version = version_file.read()
+        except IOError:
+            pass
         info_box.addstr(1,
             1,
             "%sVersion%s" % (
@@ -171,7 +199,7 @@ class PyCalCurse(object):
             curses.A_REVERSE
         )
         info_box.addstr(3,
-            version_space,
+            self._centralized_pos(69, version),
             version
         )
         info_box.addstr(6,
@@ -414,6 +442,10 @@ class PyCalCurse(object):
         self.calendar_widget.refresh()
         self.info_widget.touchwin()
         self.info_widget.refresh()
+
+    def _centralized_pos(self, width_or_hight, input_text):
+        return ((width_or_hight - len(input_text)) / 2)
+
 
 if __name__ == '__main__':
     scr = PyCalCurse()

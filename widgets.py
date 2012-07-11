@@ -38,6 +38,7 @@ class CheckboxWidget(object):
         self.mode = self.possile_modes[mode]
         self.symbol = symbol
         self.active = False
+        self._place_widget_in_window()
 
     def curly(self):
         self.mode = self.possile_modes['curly']
