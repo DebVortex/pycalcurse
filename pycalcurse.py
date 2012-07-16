@@ -84,10 +84,8 @@ class PyCalCurse(object):
     def init_main_screen(self):
         if not self.screen:
             self.screen = curses.initscr()
-            #self._init_colors()
+            self._init_colors()
             self.screen.keypad(1)
-            curses.start_color()
-            curses.use_default_colors()
             curses.noecho()
             curses.curs_set(0)
             curses.resize_term(24, 80)
@@ -483,7 +481,12 @@ class PyCalCurse(object):
             self._load_ressources()
             line = 3
             for ressource in self.calendar_ressources.keys():
-                self.included_cal_widget.addstr(line, 1, ressource)
+
+                self.included_cal_widget.addstr(
+                    line,
+                    1,
+                    ressource,
+                    curses.color_pair(self.calendar_ressources[ressource].color))
                 line += 1
             self.included_cal_widget.refresh()
         else:
@@ -567,7 +570,7 @@ class PyCalCurse(object):
                     end_time.strftime("%H:%M"),
                     event['SUMMARY'].title(),
                 ),
-                ressource_color
+                curses.color_pair(ressource_color)
             )
             line += 1
         while line < 18:
@@ -623,13 +626,14 @@ class PyCalCurse(object):
 
     def _init_colors(self):
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_BLACK, -1)
-        curses.init_pair(2, curses.COLOR_BLUE, -1)
-        curses.init_pair(3, curses.COLOR_CYAN, -1)
-        curses.init_pair(4, curses.COLOR_GREEN, -1)
-        curses.init_pair(5, curses.COLOR_RED, -1)
-        curses.init_pair(6, curses.COLOR_WHITE, -1)
-        curses.init_pair(7, curses.COLOR_YELLOW, -1)
+        curses.use_default_colors()
+        curses.init_pair(curses.COLOR_BLACK, curses.COLOR_BLACK, -1)
+        curses.init_pair(curses.COLOR_BLUE, curses.COLOR_BLUE, -1)
+        curses.init_pair(curses.COLOR_CYAN, curses.COLOR_CYAN, -1)
+        curses.init_pair(curses.COLOR_GREEN, curses.COLOR_GREEN, -1)
+        curses.init_pair(curses.COLOR_RED, curses.COLOR_RED, -1)
+        curses.init_pair(curses.COLOR_WHITE, curses.COLOR_WHITE, -1)
+        curses.init_pair(curses.COLOR_YELLOW, curses.COLOR_YELLOW, -1)
 
 
 if __name__ == '__main__':
