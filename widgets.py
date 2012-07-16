@@ -51,7 +51,7 @@ class CheckboxWidget(object):
 
     def toggle(self):
         self.active = not self.active
-        self._place_widget_in_window(self)
+        self._place_widget_in_window()
 
     def _place_widget_in_window(self):
         self.window.addstr(

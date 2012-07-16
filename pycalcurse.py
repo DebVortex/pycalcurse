@@ -13,6 +13,7 @@ import os
 import curses
 import datetime
 import calendar
+from icalendar import Calendar, Event
 
 from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION
 from widgets import CheckboxWidget
@@ -137,16 +138,32 @@ class PyCalCurse(object):
         input_win.move(2, 1)
         input_win.refresh()
         name = input_win.getstr()
+
         input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
         input_win.addstr(1, 1, "Beginn des Termines (HH:MM)", curses.A_REVERSE)
         input_win.move(2, 1)
-        start_time = input_win.getstr()
+        start_time = self._time_input(input_win)
+        if not start_time:
+            self._refresh_after_popup()
+            return
         input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
         input_win.addstr(1, 1, "Ende des Termines (HH:MM)", curses.A_REVERSE)
         input_win.move(2, 1)
-        end_time = input_win.getstr()
+        end_time = self._time_input(input_win)
+        if not end_time:
+            self._refresh_after_popup()
+            return
+
+        if end_time < start_time:
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Fehlerhafte eingabe!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "Endzeit muss nach Startzeit liegen")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
         input_win.clear()
         input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
@@ -157,7 +174,7 @@ class PyCalCurse(object):
         input_win.addstr(1, 1, "In welche Kalender speichern?", curses.A_REVERSE)
         curses.noecho()
         line_pos = 2
-        checkbox_list = []
+        checkbox_pos = {}
         for ressource in self.calendar_ressources:
             ressource_checkbox = CheckboxWidget(
                 input_win,
@@ -165,21 +182,124 @@ class PyCalCurse(object):
                 1,
                 ressource
             )
-            checkbox_list.append(ressource_checkbox)
+            checkbox_pos[line_pos] = [ressource_checkbox,
+                self.calendar_ressources[ressource]
+            ]
             line_pos += 1
-        input_win.move(2, 2)
+        first_pos = min(checkbox_pos.keys())
+        last_pos = max(checkbox_pos.keys())
+        curent_pos = first_pos
+        input_win.move(curent_pos, 2)
         input_win.refresh()
         curses.curs_set(2)
-        input_win.getstr()
+        x = 0
+        while x != 10:  # use 10 for 'Enter', because curses.KEY_ENTER is 343
+                        # but getch get 10 from the key
+            x = self.screen.getch()
+            if x == 32:  # use 32 for 'Space', because there is no KEY_SPACE
+                checkbox_pos[curent_pos][0].toggle()
+                input_win.move(curent_pos, 2)
+                input_win.refresh()
+            if x == curses.KEY_UP:
+                if curent_pos != first_pos:
+                    curent_pos -= 1
+                    input_win.move(curent_pos, 2)
+                    input_win.refresh()
+            if x == curses.KEY_DOWN:
+                if curent_pos != last_pos:
+                    curent_pos += 1
+                    input_win.move(curent_pos, 2)
+                    input_win.refresh()
         curses.curs_set(0)
 
+        new_event = Event()
+        new_event.add('summary', name)
+        new_event.add('dtstart', start_time)
+        new_event.add('dtend', end_time)
+        choosen_ressources = []
+        for pos in checkbox_pos.keys():
+            if checkbox_pos[pos][0].active:
+                choosen_ressources.append(checkbox_pos[pos][1])
+        for ressource in choosen_ressources:
+            ressource.ical.add_component(new_event)
+            ressource.save()
+        self.calendar_widget = None
+        self.event_widget = None
+        self.info_widget = None
+        self.included_cal_widget = None
+
     def _add_ressource(self):
-        # ToDo
-        pass
+        input_win = curses.newwin(4, 70, 10, 5)
+        input_win.border()
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(1, 1, "Namen der Ressource eingeben.", curses.A_REVERSE)
+        input_win.touchwin()
+        curses.echo()
+        input_win.move(2, 1)
+        input_win.refresh()
+        name = input_win.getstr()
+        curses.noecho()
+
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(2, 1, (" " * 68))
+        input_win.addstr(
+            1,
+            1,
+            "Eine Locale oder eine Webressource anlegen?",
+            curses.A_REVERSE
+        )
+        input_win.addstr(2, 1, "locale Ressource = l     webbasierte Ressource = w")
+        input_win.refresh()
+        x = 0
+        while not x in [ord('l'), ord('w')]:
+            x = input_win.getch()
+        if x == ord('l'):
+            ressource_type = "local"
+        elif x == ord('w'):
+            ressource_type = "webressource"
+        new_ressource = Calendar()
+        new_ressource.add('prodid', '-//My calendar product//mxm.dk//')
+        new_ressource.add('version', '2.0')
+        new_cal_path = os.path.expanduser("~/.config/pycalcurse/%s.ical" % (name.lower()))
+        if os.path.exists(new_cal_path):
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "Der Kalender existiert bereits.")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
+        with open(new_cal_path, 'w') as ressource_file:
+            ressource_file.write(new_ressource.to_ical())
+        config_file_path = os.path.expanduser(
+            '~/.config/pycalcurse/ressources.csv'
+        )
+        with open(config_file_path, 'a') as config_file:
+            config_string = "%s,%s,%s\n" % (name, ressource_type, new_cal_path)
+            config_file.write(config_string)
 
     def _edit_ressource_or_event(self):
         # ToDo
         pass
+
+    def _time_input(self, window):
+        try:
+            start_time_hour, start_time_min = window.getstr().split(":")
+            time = datetime.datetime(
+                self.active_day.year,
+                self.active_day.month,
+                self.active_day.day,
+                int(start_time_hour),
+                int(start_time_min)
+            )
+        except:
+            window.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            window.addstr(2, 1, (" " * 68))
+            window.addstr(1, 1, "Fehlerhafte Eingabe!", curses.A_REVERSE)
+            window.addstr(2, 1, "falsches Eingabeformat")
+            window.getch()
+            return None
+        return time
 
     def _show_license_box(self):
         info_box = curses.newwin(22, 71, 1, 5)
@@ -385,7 +505,10 @@ class PyCalCurse(object):
         events.sort(key=lambda a: a['DTSTART'].dt)
         for event in events:
             start_time = event['DTSTART'].dt
-            end_time = start_time + event['DURATION'].dt
+            if 'DURATION' in event.keys():
+                end_time = start_time + event['DURATION'].dt
+            elif 'DTEND' in event.keys():
+                end_time = event['DTEND'].dt
             self.event_widget.addstr(
                 line,
                 1,

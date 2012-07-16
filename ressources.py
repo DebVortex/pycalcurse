@@ -14,12 +14,12 @@ from icalendar import Calendar
 
 class CalRessource(dict):
 
-    def __init__(self, ressouce_path, webresource=False):
+    def __init__(self, ressouce_path, ressource_type="local"):
         self.ressouce_path = ressouce_path
-        self.webresource = webresource
-        if self.webresource:
+        self.ressource_type = ressource_type
+        if self.ressource_type == 'webressource':
             pass
-        else:
+        elif self.ressource_type == 'local':
             with open(self.ressouce_path, 'rb') as cal_file:
                 self.ical = Calendar.from_ical(cal_file.read())
         for component in self.ical.walk():
@@ -29,3 +29,8 @@ class CalRessource(dict):
                     self[iso_date] = [component]
                 else:
                     self[iso_date].append(component)
+
+    def save(self):
+        if not self.webresource:
+            with open(self.ressouce_path, 'w') as ressource_file:
+                ressource_file.write(self.ical.to_ical())
