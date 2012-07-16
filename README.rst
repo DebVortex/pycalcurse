@@ -16,8 +16,9 @@ This software is released unter the WTFPL v2.
 ToDo's:
 =======
 
-* handle webressources
 * edit events and ressources
-* change language from german to english
+* build python package, add setup.py
+* handle webressources
+* change default language from german to english
 * add multilingual support
 * several views (e.g. a week-view)
