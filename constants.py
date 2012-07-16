@@ -9,6 +9,8 @@
 # To Public License, Version 2, as published by Sam Hocevar. See
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
+import curses
+
 DAY_DICT = {
     0: ['Montag', 'Mo'],
     1: ['Dienstag' 'Di'],
@@ -42,4 +44,28 @@ CALENDAR_DAY_POSITION = {
     4: 14,
     5: 17,
     6: 20
+}
+
+COLOR_DICT = {
+ 'black': curses.COLOR_BLACK,
+ 'blue': curses.COLOR_BLUE,
+ 'cyan': curses.COLOR_CYAN,
+ 'green': curses.COLOR_GREEN,
+ 'magenta': curses.COLOR_MAGENTA,
+ 'red': curses.COLOR_RED,
+ 'white': curses.COLOR_WHITE,
+ 'yellow': curses.COLOR_YELLOW,
+ 'normal': curses.A_NORMAL
+}
+
+INPUT_COLOR_DICT = {
+ ord("0"): 'normal',
+ ord("1"): 'black',
+ ord("2"): 'blue',
+ ord("3"): 'cyan',
+ ord("4"): 'green',
+ ord("5"): 'magenta',
+ ord("6"): 'red',
+ ord("7"): 'white',
+ ord("8"): 'yellow',
 }

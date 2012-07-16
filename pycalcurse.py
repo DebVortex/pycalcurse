@@ -15,7 +15,7 @@ import datetime
 import calendar
 from icalendar import Calendar, Event
 
-from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION
+from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION, INPUT_COLOR_DICT
 from widgets import CheckboxWidget
 from ressources import CalRessource
 
@@ -84,7 +84,10 @@ class PyCalCurse(object):
     def init_main_screen(self):
         if not self.screen:
             self.screen = curses.initscr()
+            #self._init_colors()
             self.screen.keypad(1)
+            curses.start_color()
+            curses.use_default_colors()
             curses.noecho()
             curses.curs_set(0)
             curses.resize_term(24, 80)
@@ -132,6 +135,12 @@ class PyCalCurse(object):
         input_win = curses.newwin(4, 70, 10, 5)
         input_win.border()
         input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        if self.calendar_ressources.keys() == []:
+            input_win.addstr(1, 1, "Noch keine Ressource vorhanden!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "Bitte legen sie zuerst eine Ressource an.")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
         input_win.addstr(1, 1, "Bezeichnung des Events", curses.A_REVERSE)
         input_win.touchwin()
         curses.echo()
@@ -263,7 +272,7 @@ class PyCalCurse(object):
             "Eine Locale oder eine Webressource anlegen?",
             curses.A_REVERSE
         )
-        input_win.addstr(2, 1, "locale Ressource = l     webbasierte Ressource = w")
+        input_win.addstr(2, 1, "l = locale Ressource, w = webbasierte Ressource")
         input_win.refresh()
         x = 0
         while not x in [ord('l'), ord('w')]:
@@ -272,6 +281,26 @@ class PyCalCurse(object):
             ressource_type = "local"
         elif x == ord('w'):
             ressource_type = "webressource"
+
+        input_win.resize(5, 70)
+        input_win.border()
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(2, 1, (" " * 68))
+        input_win.addstr(3, 1, (" " * 68))
+        input_win.addstr(
+            1,
+            1,
+            "In welcher Farbe sollen die Einträge dargestellt werden?",
+            curses.A_REVERSE
+        )
+        input_win.addstr(2, 1, "0 = Normal, 1 = Schwarz, 2 = Blau, 3 = Cyan, 4 = Gruen, 5 = Magenta")
+        input_win.addstr(3, 1, "6 = Rot, 7 = Weiss, 8 = Gelb")
+        input_win.refresh()
+        x = 0
+        while not x in [ord(str(num)) for num in range(9)]:
+            x = input_win.getch()
+        color = INPUT_COLOR_DICT[x]
+
         new_ressource = Calendar()
         new_ressource.add('prodid', '-//My calendar product//mxm.dk//')
         new_ressource.add('version', '2.0')
@@ -290,7 +319,7 @@ class PyCalCurse(object):
             '~/.config/pycalcurse/ressources.csv'
         )
         with open(config_file_path, 'a') as config_file:
-            config_string = "%s,%s,%s\n" % (name, ressource_type, new_cal_path)
+            config_string = "%s,%s,%s,%s\n" % (name, ressource_type, new_cal_path, color)
             config_file.write(config_string)
         self.calendar_widget = None
         self.event_widget = None
@@ -519,10 +548,12 @@ class PyCalCurse(object):
         for ressource_name in self.calendar_ressources.keys():
             ressource = self.calendar_ressources[ressource_name]
             if self.active_day.isoformat() in ressource.keys():
-                [events.append(event) for event in \
+                [events.append([event, ressource.color]) for event in \
                     ressource[self.active_day.isoformat()]]
-        events.sort(key=lambda a: a['DTSTART'].dt)
-        for event in events:
+        events.sort(key=lambda a: a[0]['DTSTART'].dt)
+        for event_pair in events:
+            event = event_pair[0]
+            ressource_color = event_pair[1]
             start_time = event['DTSTART'].dt
             if 'DURATION' in event.keys():
                 end_time = start_time + event['DURATION'].dt
@@ -534,8 +565,9 @@ class PyCalCurse(object):
                 "%s | %s | %s" % (
                     start_time.strftime("%H:%M"),
                     end_time.strftime("%H:%M"),
-                    event['SUMMARY'].title()
-                )
+                    event['SUMMARY'].title(),
+                ),
+                ressource_color
             )
             line += 1
         while line < 18:
@@ -564,8 +596,8 @@ class PyCalCurse(object):
         with self._load_config_or_create() as config_file:
             for line in config_file.read().split('\n'):
                 if line != '':
-                    name, cal_type, ressource_path = line.split(',')
-                    self.calendar_ressources[name] = CalRessource(ressource_path)
+                    name, cal_type, ressource_path, color = line.split(',')
+                    self.calendar_ressources[name] = CalRessource(ressource_path, color)
 
     def _load_config_or_create(self):
         config_path = os.path.expanduser('~/.config/pycalcurse/')
@@ -589,7 +621,20 @@ class PyCalCurse(object):
     def _centralized_pos(self, width_or_hight, input_text):
         return ((width_or_hight - len(input_text)) / 2)
 
+    def _init_colors(self):
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_BLACK, -1)
+        curses.init_pair(2, curses.COLOR_BLUE, -1)
+        curses.init_pair(3, curses.COLOR_CYAN, -1)
+        curses.init_pair(4, curses.COLOR_GREEN, -1)
+        curses.init_pair(5, curses.COLOR_RED, -1)
+        curses.init_pair(6, curses.COLOR_WHITE, -1)
+        curses.init_pair(7, curses.COLOR_YELLOW, -1)
+
 
 if __name__ == '__main__':
-    scr = PyCalCurse()
-    scr.input_loop()
+    try:
+        scr = PyCalCurse()
+        scr.input_loop()
+    finally:
+        curses.endwin()

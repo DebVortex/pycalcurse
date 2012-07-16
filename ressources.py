@@ -11,12 +11,15 @@
 
 from icalendar import Calendar
 
+from constants import COLOR_DICT
+
 
 class CalRessource(dict):
 
-    def __init__(self, ressouce_path, ressource_type="local"):
+    def __init__(self, ressouce_path, color=None, ressource_type="local"):
         self.ressouce_path = ressouce_path
         self.ressource_type = ressource_type
+        self.color = COLOR_DICT[color]
         if self.ressource_type == 'webressource':
             pass
         elif self.ressource_type == 'local':
