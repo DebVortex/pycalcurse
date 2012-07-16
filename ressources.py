@@ -31,6 +31,6 @@ class CalRessource(dict):
                     self[iso_date].append(component)
 
     def save(self):
-        if not self.webresource:
+        if not self.ressource_type == 'webressource':
             with open(self.ressouce_path, 'w') as ressource_file:
                 ressource_file.write(self.ical.to_ical())

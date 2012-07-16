@@ -138,7 +138,14 @@ class PyCalCurse(object):
         input_win.move(2, 1)
         input_win.refresh()
         name = input_win.getstr()
-
+        if name == '':
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "Der Name der Ressource darf nicht leer sein.")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
         input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
         input_win.addstr(1, 1, "Beginn des Termines (HH:MM)", curses.A_REVERSE)
@@ -238,6 +245,14 @@ class PyCalCurse(object):
         input_win.move(2, 1)
         input_win.refresh()
         name = input_win.getstr()
+        if name == '':
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "Der Name der Ressource darf nicht leer sein.")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
         curses.noecho()
 
         input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
@@ -277,6 +292,10 @@ class PyCalCurse(object):
         with open(config_file_path, 'a') as config_file:
             config_string = "%s,%s,%s\n" % (name, ressource_type, new_cal_path)
             config_file.write(config_string)
+        self.calendar_widget = None
+        self.event_widget = None
+        self.info_widget = None
+        self.included_cal_widget = None
 
     def _edit_ressource_or_event(self):
         # ToDo
@@ -544,8 +563,9 @@ class PyCalCurse(object):
     def _load_ressources(self):
         with self._load_config_or_create() as config_file:
             for line in config_file.read().split('\n'):
-                name, cal_type, ressource_path = line.split(',')
-                self.calendar_ressources[name] = CalRessource(ressource_path)
+                if line != '':
+                    name, cal_type, ressource_path = line.split(',')
+                    self.calendar_ressources[name] = CalRessource(ressource_path)
 
     def _load_config_or_create(self):
         config_path = os.path.expanduser('~/.config/pycalcurse/')
