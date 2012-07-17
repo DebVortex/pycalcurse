@@ -16,7 +16,7 @@ import calendar
 from icalendar import Calendar, Event
 
 from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION, INPUT_COLOR_DICT, \
-    COLOR_DICT_REVERSE
+    COLOR_DICT_REVERSE, COLOR_DICT
 from widgets import CheckboxWidget
 from ressources import CalRessource
 
@@ -405,6 +405,7 @@ class PyCalCurse(object):
             x = input_win.getch()
         if x == ord('0'):  # Exit
             self._refresh_after_popup()
+            self.included_cal_widget = None
         elif x == ord('1'):  # Change name
             input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
             input_win.addstr(2, 1, (" " * 68))
@@ -429,10 +430,10 @@ class PyCalCurse(object):
             for ressource in [self.calendar_ressources[ressource_name] for \
                 ressource_name in self.calendar_ressources.keys()]:
                 config_string_list.append("%s,%s,%s,%s" % (
-                        new_calendar.name,
-                        new_calendar.ressource_type,
-                        new_calendar.ressouce_path,
-                        COLOR_DICT_REVERSE[new_calendar.color]
+                        ressource.name,
+                        ressource.ressource_type,
+                        ressource.ressouce_path,
+                        COLOR_DICT_REVERSE[ressource.color]
                     )
                 )
             config_file.write('\n'.join(config_string_list))
@@ -445,9 +446,71 @@ class PyCalCurse(object):
             curses.noecho()
             return
         elif x == ord('2'):  # Change color
-            pass
+            input_win.resize(5, 70)
+            input_win.border()
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(3, 1, (" " * 68))
+            input_win.addstr(
+                1,
+                1,
+                "In welcher Farbe sollen die Einträge dargestellt werden?",
+                curses.A_REVERSE
+            )
+            input_win.addstr(2, 1, "0 = Normal, 1 = Schwarz, 2 = Blau, 3 = Cyan, 4 = Gruen, 5 = Magenta")
+            input_win.addstr(3, 1, "6 = Rot, 7 = Weiss, 8 = Gelb")
+            input_win.refresh()
+            x = 0
+            while not x in [ord(str(num)) for num in range(9)]:
+                x = input_win.getch()
+            self.calendar_ressources[choosen_ressource].color = COLOR_DICT[INPUT_COLOR_DICT[x]]
+            config_file_path = os.path.expanduser(
+                '~/.config/pycalcurse/ressources.csv'
+            )
+            config_file = open(config_file_path, 'w')
+            config_string_list = []
+            for ressource in [self.calendar_ressources[ressource_name] for \
+                ressource_name in self.calendar_ressources.keys()]:
+                config_string_list.append("%s,%s,%s,%s" % (
+                        ressource.name,
+                        ressource.ressource_type,
+                        ressource.ressouce_path,
+                        COLOR_DICT_REVERSE[ressource.color]
+                    )
+                )
+            config_file.write('\n'.join(config_string_list))
+            config_file.close()
+            self.calendar_widget = None
+            self.event_widget = None
+            self.info_widget = None
+            self.included_cal_widget = None
+            self.calendar_ressources = {}
+            curses.noecho()
+            return
         elif x == ord('3'):  # Delete ressource
-            pass
+            config_file_path = os.path.expanduser(
+                '~/.config/pycalcurse/ressources.csv'
+            )
+            config_file = open(config_file_path, 'w')
+            config_string_list = []
+            for ressource in [self.calendar_ressources[ressource_name] for \
+                ressource_name in self.calendar_ressources.keys()]:
+                config_string_list.append("%s,%s,%s,%s" % (
+                        ressource.name,
+                        ressource.ressource_type,
+                        ressource.ressouce_path,
+                        COLOR_DICT_REVERSE[ressource.color]
+                    )
+                )
+            config_file.write('\n'.join(config_string_list))
+            config_file.close()
+            self.calendar_widget = None
+            self.event_widget = None
+            self.info_widget = None
+            self.included_cal_widget = None
+            self.calendar_ressources = {}
+            curses.noecho()
+            return
         self.included_cal_widget.refresh()
 
     def _time_input(self, window):
