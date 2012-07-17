@@ -9,6 +9,8 @@
 # To Public License, Version 2, as published by Sam Hocevar. See
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
+import os
+
 from icalendar import Calendar
 
 from constants import COLOR_DICT
@@ -16,10 +18,11 @@ from constants import COLOR_DICT
 
 class CalRessource(dict):
 
-    def __init__(self, ressouce_path, color=None, ressource_type="local"):
+    def __init__(self, name, ressouce_path, color=None, ressource_type="local"):
         self.ressouce_path = ressouce_path
         self.ressource_type = ressource_type
         self.color = COLOR_DICT[color]
+        self.name = name
         if self.ressource_type == 'webressource':
             pass
         elif self.ressource_type == 'local':

@@ -15,7 +15,8 @@ import datetime
 import calendar
 from icalendar import Calendar, Event
 
-from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION, INPUT_COLOR_DICT
+from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION, INPUT_COLOR_DICT, \
+    COLOR_DICT_REVERSE
 from widgets import CheckboxWidget
 from ressources import CalRessource
 
@@ -325,8 +326,129 @@ class PyCalCurse(object):
         self.included_cal_widget = None
 
     def _edit_ressource_or_event(self):
-        # ToDo
+        input_win = curses.newwin(4, 70, 10, 5)
+        input_win.border()
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(1, 1, "Ein Event oder eine Ressource bearbeiten?", curses.A_REVERSE)
+        input_win.addstr(2, 1, "a = Event, r = Ressource")
+        input_win.touchwin()
+        input_win.refresh()
+        x = 0
+        while not x in [ord('a'), ord('r')]:
+            x = input_win.getch()
+        if x == ord('a'):
+            self._refresh_after_popup()
+            self._edit_event()
+        elif x == ord('r'):
+            self._refresh_after_popup()
+            self._edit_ressource()
+
+    def _edit_event(self):
         pass
+
+    def _edit_ressource(self):
+        if self.calendar_ressources.keys() == []:
+            input_win = curses.newwin(4, 70, 10, 5)
+            input_win.border()
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "Es existiert noch keine Ressource.")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
+        self.included_cal_widget.touchwin()
+        min_line = active_line = 3
+        max_line = (len(self.calendar_ressources.keys()) + 2)
+        x = 0
+        while x != 10:  # use 10 for 'Enter', because curses.KEY_ENTER is 343
+                        # but getch get 10 from the key
+            line = 3
+            for ressource in self.calendar_ressources.keys():
+                if line == active_line:
+                    self.included_cal_widget.addstr(
+                        line,
+                        1,
+                        ressource,
+                        curses.A_REVERSE
+                    )
+                    line += 1
+                else:
+                    self.included_cal_widget.addstr(
+                        line,
+                        1,
+                        ressource,
+                        curses.color_pair(self.calendar_ressources[ressource].color)
+                    )
+                    line += 1
+            self.included_cal_widget.refresh()
+            x = self.screen.getch()
+            if x == curses.KEY_UP:
+                if active_line == min_line:
+                    pass
+                else:
+                    active_line -= 1
+            elif x == curses.KEY_DOWN:
+                if active_line == max_line:
+                    pass
+                else:
+                    active_line += 1
+        choosen_ressource = self.calendar_ressources.keys()[active_line - 3]  # Subtract the staringline
+        input_win = curses.newwin(4, 70, 10, 5)
+        input_win.border()
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(2, 1, (" " * 68))
+        input_win.addstr(1, 1, "Was bearbeiten?", curses.A_REVERSE)
+        input_win.addstr(2, 1, "1 = Name, 2 = Farbe, 3 = Löschen, 0 = Abbrechen")
+        x = 0
+        while not x in [ord(str(y)) for y in range(4)]:
+            x = input_win.getch()
+        if x == ord('0'):  # Exit
+            self._refresh_after_popup()
+        elif x == ord('1'):  # Change name
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Bitte geben sie den neuen Namen ein.", curses.A_REVERSE)
+            curses.echo()
+            input_win.move(2, 1)
+            new_name = input_win.getstr()
+            old_calendar = self.calendar_ressources[choosen_ressource]
+            ical = old_calendar.ical
+            color = old_calendar.color
+            new_cal_path = os.path.expanduser("~/.config/pycalcurse/%s.ical" % (new_name.lower()))
+            with open(new_cal_path, 'w') as ressource_file:
+                ressource_file.write(ical.to_ical())
+            new_calendar = CalRessource(new_name, new_cal_path, color=COLOR_DICT_REVERSE[color])
+            del self.calendar_ressources[choosen_ressource]
+            self.calendar_ressources[new_name] = new_calendar
+            config_file_path = os.path.expanduser(
+                '~/.config/pycalcurse/ressources.csv'
+            )
+            config_file = open(config_file_path, 'w')
+            config_string_list = []
+            for ressource in [self.calendar_ressources[ressource_name] for \
+                ressource_name in self.calendar_ressources.keys()]:
+                config_string_list.append("%s,%s,%s,%s" % (
+                        new_calendar.name,
+                        new_calendar.ressource_type,
+                        new_calendar.ressouce_path,
+                        COLOR_DICT_REVERSE[new_calendar.color]
+                    )
+                )
+            config_file.write('\n'.join(config_string_list))
+            config_file.close()
+            self.calendar_widget = None
+            self.event_widget = None
+            self.info_widget = None
+            self.included_cal_widget = None
+            self.calendar_ressources = {}
+            curses.noecho()
+            return
+        elif x == ord('2'):  # Change color
+            pass
+        elif x == ord('3'):  # Delete ressource
+            pass
+        self.included_cal_widget.refresh()
 
     def _time_input(self, window):
         try:
@@ -600,7 +722,7 @@ class PyCalCurse(object):
             for line in config_file.read().split('\n'):
                 if line != '':
                     name, cal_type, ressource_path, color = line.split(',')
-                    self.calendar_ressources[name] = CalRessource(ressource_path, color)
+                    self.calendar_ressources[name] = CalRessource(name, ressource_path, color)
 
     def _load_config_or_create(self):
         config_path = os.path.expanduser('~/.config/pycalcurse/')
@@ -620,6 +742,8 @@ class PyCalCurse(object):
         self.calendar_widget.refresh()
         self.info_widget.touchwin()
         self.info_widget.refresh()
+        self.event_widget.touchwin()
+        self.event_widget.refresh()
 
     def _centralized_pos(self, width_or_hight, input_text):
         return ((width_or_hight - len(input_text)) / 2)

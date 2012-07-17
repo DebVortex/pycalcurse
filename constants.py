@@ -58,6 +58,18 @@ COLOR_DICT = {
  'normal': curses.A_NORMAL
 }
 
+COLOR_DICT_REVERSE = {
+    curses.COLOR_BLACK: "black",
+    curses.COLOR_BLUE: "blue",
+    curses.COLOR_CYAN: "cyan",
+    curses.COLOR_GREEN: "green",
+    curses.COLOR_MAGENTA: "magenta",
+    curses.COLOR_RED: "red",
+    curses.COLOR_WHITE: "white",
+    curses.COLOR_YELLOW: "yellow",
+    curses.A_NORMAL: "normal"
+}
+
 INPUT_COLOR_DICT = {
  ord("0"): 'normal',
  ord("1"): 'black',
