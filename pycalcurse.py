@@ -488,29 +488,46 @@ class PyCalCurse(object):
             curses.noecho()
             return
         elif x == ord('3'):  # Delete ressource
-            config_file_path = os.path.expanduser(
-                '~/.config/pycalcurse/ressources.csv'
-            )
-            config_file = open(config_file_path, 'w')
-            config_string_list = []
-            for ressource in [self.calendar_ressources[ressource_name] for \
-                ressource_name in self.calendar_ressources.keys()]:
-                config_string_list.append("%s,%s,%s,%s" % (
-                        ressource.name,
-                        ressource.ressource_type,
-                        ressource.ressouce_path,
-                        COLOR_DICT_REVERSE[ressource.color]
-                    )
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(
+                1,
+                1,
+                "Soll die Ressource %s wirklich geloescht werden?." % (choosen_ressource),
+                curses.A_REVERSE)
+            input_win.addstr(2, 1, "[y/n]")
+            x = 0
+            while x not in [ord('y'), ord('j'), ord('n')]:
+                x = input_win.getch()
+            if x == ord('n'):
+                self._refresh_after_popup()
+                return
+            elif x in [ord('y'), ord('j')]:
+                os.remove(self.calendar_ressources[choosen_ressource].ressouce_path)
+                del self.calendar_ressources[choosen_ressource]
+                config_file_path = os.path.expanduser(
+                    '~/.config/pycalcurse/ressources.csv'
                 )
-            config_file.write('\n'.join(config_string_list))
-            config_file.close()
-            self.calendar_widget = None
-            self.event_widget = None
-            self.info_widget = None
-            self.included_cal_widget = None
-            self.calendar_ressources = {}
-            curses.noecho()
-            return
+                config_file = open(config_file_path, 'w')
+                config_string_list = []
+                for ressource in [self.calendar_ressources[ressource_name] for \
+                    ressource_name in self.calendar_ressources.keys()]:
+                    config_string_list.append("%s,%s,%s,%s" % (
+                            ressource.name,
+                            ressource.ressource_type,
+                            ressource.ressouce_path,
+                            COLOR_DICT_REVERSE[ressource.color]
+                        )
+                    )
+                    config_file.write('\n'.join(config_string_list))
+                config_file.close()
+                self.calendar_widget = None
+                self.event_widget = None
+                self.info_widget = None
+                self.included_cal_widget = None
+                self.calendar_ressources = {}
+                curses.noecho()
+                return
         self.included_cal_widget.refresh()
 
     def _time_input(self, window):
