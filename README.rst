@@ -13,6 +13,11 @@ The pycalcurse project is inspired by the c project 'calcurse_'.
 
 This software is released unter the WTFPL v2.
 
+Requirements
+============
+
+* icalendar
+
 ToDo's:
 =======
 
