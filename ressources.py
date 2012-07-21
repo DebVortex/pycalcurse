@@ -18,7 +18,7 @@ from constants import COLOR_DICT
 
 class CalRessource(dict):
 
-    def __init__(self, name, ressouce_path, color=None, ressource_type="local"):
+    def __init__(self, name, ressouce_path, color='normal', ressource_type="local"):
         self.ressouce_path = ressouce_path
         self.ressource_type = ressource_type
         self.color = COLOR_DICT[color]

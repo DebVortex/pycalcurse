@@ -175,7 +175,7 @@ class PyCalCurse(object):
             input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
             input_win.addstr(2, 1, (" " * 68))
             input_win.addstr(1, 1, "Fehlerhafte eingabe!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "Endzeit muss nach Startzeit liegen")
+            input_win.addstr(2, 1, "Endzeit darf nicht vor Startzeit liegen")
             input_win.getch()
             self._refresh_after_popup()
             return
@@ -405,6 +405,108 @@ class PyCalCurse(object):
                     pass
                 else:
                     active_line += 1
+        choosen_event = events_of_active_day[active_line - 3][0]  # Subtract the staringline
+        input_win = curses.newwin(4, 70, 10, 5)
+        input_win.border()
+        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+        input_win.addstr(2, 1, (" " * 68))
+        input_win.addstr(1, 1, "Was bearbeiten?", curses.A_REVERSE)
+        input_win.addstr(2, 1, "1 = Name, 2 = Zeit, 3 = Loeschen, 0 = Abbrechen")
+        x = 0
+        while not x in [ord(str(y)) for y in range(5)]:
+            x = input_win.getch()
+        if x == ord('0'):  # Abbrechen
+            self._refresh_after_popup()
+        elif x == ord('1'):  # Name
+            curses.echo()
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Neuer Name des Termines (HH:MM)", curses.A_REVERSE)
+            input_win.move(2, 1)
+            name = input_win.getstr()
+            for ressource_name in self.calendar_ressources:
+                ressource = self.calendar_ressources[ressource_name]
+                for subcomponent in ressource.ical.subcomponents:
+                    if subcomponent == choosen_event:
+                        index_of_ressource = ressource.ical.subcomponents.index(subcomponent)
+                        ressource.ical.subcomponents[index_of_ressource].set('SUMMARY', name)
+                        ressource.save()
+                        self.info_widget = None
+                        self.event_widget = None
+                        self.calendar_widget = None
+                        self.included_cal_widget = None
+                        return
+            curses.noecho()
+            pass
+        elif x == ord('2'):  # Zeit
+            curses.echo()
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Beginn des Termines (HH:MM)", curses.A_REVERSE)
+            input_win.move(2, 1)
+            start_time = self._time_input(input_win)
+            if not start_time:
+                curses.noecho()
+                self._refresh_after_popup()
+                return
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Ende des Termines (HH:MM)", curses.A_REVERSE)
+            input_win.move(2, 1)
+            end_time = self._time_input(input_win)
+            curses.noecho()
+            if not end_time:
+                self._refresh_after_popup()
+                return
+            if end_time < start_time:
+                input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+                input_win.addstr(2, 1, (" " * 68))
+                input_win.addstr(1, 1, "Fehlerhafte eingabe!", curses.A_REVERSE)
+                input_win.addstr(2, 1, "Endzeit darf nicht vor Startzeit liegen")
+                input_win.getch()
+                self._refresh_after_popup()
+                return
+            for ressource_name in self.calendar_ressources:
+                ressource = self.calendar_ressources[ressource_name]
+                for subcomponent in ressource.ical.subcomponents:
+                    if subcomponent == choosen_event:
+                        index_of_ressource = ressource.ical.subcomponents.index(subcomponent)
+                        ressource.ical.subcomponents[index_of_ressource].set('DTSTART', start_time)
+                        ressource.ical.subcomponents[index_of_ressource].set('DTEND', end_time)
+                        ressource.save()
+                        self.info_widget = None
+                        self.event_widget = None
+                        self.calendar_widget = None
+                        self.included_cal_widget = None
+                        return
+        elif x == ord('3'):  # Loeschen
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(
+                1,
+                1,
+                "Den Termin %s wirklich loeschen?" % (choosen_event.get('SUMMARY')),
+                curses.A_REVERSE
+            )
+            input_win.addstr(2, 1, "[j/n]")
+            while x not in [ord('y'), ord('j'), ord('n')]:
+                x = input_win.getch()
+            if x == ord('n'):
+                self._refresh_after_popup()
+                return
+            elif x in [ord('y'), ord('j')]:
+                for ressource_name in self.calendar_ressources:
+                    ressource = self.calendar_ressources[ressource_name]
+                    for subcomponent in ressource.ical.subcomponents:
+                        if subcomponent == choosen_event:
+                            index_of_ressource = ressource.ical.subcomponents.index(subcomponent)
+                            del ressource.ical.subcomponents[index_of_ressource]
+                            ressource.save()
+                            self.info_widget = None
+                            self.event_widget = None
+                            self.calendar_widget = None
+                            self.included_cal_widget = None
+                            return
 
     def _edit_ressource(self):
         if self.calendar_ressources.keys() == []:
@@ -459,13 +561,14 @@ class PyCalCurse(object):
         input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         input_win.addstr(2, 1, (" " * 68))
         input_win.addstr(1, 1, "Was bearbeiten?", curses.A_REVERSE)
-        input_win.addstr(2, 1, "1 = Name, 2 = Farbe, 3 = Löschen, 0 = Abbrechen")
+        input_win.addstr(2, 1, "1 = Name, 2 = Farbe, 3 = Loeschen, 0 = Abbrechen")
         x = 0
         while not x in [ord(str(y)) for y in range(4)]:
             x = input_win.getch()
         if x == ord('0'):  # Exit
             self._refresh_after_popup()
             self.included_cal_widget = None
+            return
         elif x == ord('1'):  # Change name
             input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
             input_win.addstr(2, 1, (" " * 68))
@@ -489,14 +592,14 @@ class PyCalCurse(object):
             config_string_list = []
             for ressource in [self.calendar_ressources[ressource_name] for \
                 ressource_name in self.calendar_ressources.keys()]:
-                config_string_list.append("%s,%s,%s,%s" % (
+                config_string_list.append("%s,%s,%s,%s\n" % (
                         ressource.name,
                         ressource.ressource_type,
                         ressource.ressouce_path,
                         COLOR_DICT_REVERSE[ressource.color]
                     )
                 )
-            config_file.write('\n'.join(config_string_list))
+            config_file.write(''.join(config_string_list))
             config_file.close()
             self.calendar_widget = None
             self.event_widget = None
@@ -531,14 +634,14 @@ class PyCalCurse(object):
             config_string_list = []
             for ressource in [self.calendar_ressources[ressource_name] for \
                 ressource_name in self.calendar_ressources.keys()]:
-                config_string_list.append("%s,%s,%s,%s" % (
+                config_string_list.append("%s,%s,%s,%s\n" % (
                         ressource.name,
                         ressource.ressource_type,
                         ressource.ressouce_path,
                         COLOR_DICT_REVERSE[ressource.color]
                     )
                 )
-            config_file.write('\n'.join(config_string_list))
+            config_file.write(''.join(config_string_list))
             config_file.close()
             self.calendar_widget = None
             self.event_widget = None
@@ -555,7 +658,7 @@ class PyCalCurse(object):
                 1,
                 "Soll die Ressource %s wirklich geloescht werden?." % (choosen_ressource),
                 curses.A_REVERSE)
-            input_win.addstr(2, 1, "[y/n]")
+            input_win.addstr(2, 1, "[j/n]")
             x = 0
             while x not in [ord('y'), ord('j'), ord('n')]:
                 x = input_win.getch()
@@ -572,14 +675,14 @@ class PyCalCurse(object):
                 config_string_list = []
                 for ressource in [self.calendar_ressources[ressource_name] for \
                     ressource_name in self.calendar_ressources.keys()]:
-                    config_string_list.append("%s,%s,%s,%s" % (
+                    config_string_list.append("%s,%s,%s,%s\n" % (
                             ressource.name,
                             ressource.ressource_type,
                             ressource.ressouce_path,
                             COLOR_DICT_REVERSE[ressource.color]
                         )
                     )
-                    config_file.write('\n'.join(config_string_list))
+                    config_file.write(''.join(config_string_list))
                 config_file.close()
                 self.calendar_widget = None
                 self.event_widget = None

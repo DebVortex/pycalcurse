@@ -21,9 +21,9 @@ Requirements
 ToDo's:
 =======
 
-* edit events and ressources
 * build python package, add setup.py
 * handle webressources
 * change default language from german to english
 * add multilingual support
 * several views (e.g. a week-view)
+* make size scaleable
