@@ -344,7 +344,67 @@ class PyCalCurse(object):
             self._edit_ressource()
 
     def _edit_event(self):
-        pass
+        events_of_active_day = []
+        for ressource_name in self.calendar_ressources.keys():
+            ressource = self.calendar_ressources[ressource_name]
+            if self.active_day.isoformat() in ressource.keys():
+                [events_of_active_day.append([event, ressource.color]) for event in \
+                    ressource[self.active_day.isoformat()]]
+        if events_of_active_day == []:
+            input_win = curses.newwin(4, 70, 10, 5)
+            input_win.border()
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "An diesem Tag gibt es keine Einträge.")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
+        events_of_active_day.sort(key=lambda a: a[0]['DTSTART'].dt)
+        min_line = active_line = 3
+        max_line = (2 + len(events_of_active_day))
+        x = 0
+        while x != 10:  # use 10 for 'Enter', because curses.KEY_ENTER is 343
+                        # but getch get 10 from the key
+            line = 3
+            for event_pair in events_of_active_day:
+                event = event_pair[0]
+                ressource_color = event_pair[1]
+                start_time = event['DTSTART'].dt
+                if 'DURATION' in event.keys():
+                    end_time = start_time + event['DURATION'].dt
+                elif 'DTEND' in event.keys():
+                    end_time = event['DTEND'].dt
+                if line == active_line:
+                    coloring = curses.A_REVERSE
+                else:
+                    coloring = curses.color_pair(ressource_color)
+                self.event_widget.addstr(
+                    line,
+                    1,
+                    "%s | %s | %s" % (
+                        start_time.strftime("%H:%M"),
+                        end_time.strftime("%H:%M"),
+                        event['SUMMARY'].title(),
+                    ),
+                    coloring
+                )
+                line += 1
+            while line < 18:
+                self.event_widget.addstr(line, 1, "      |       |")
+                line += 1
+            self.event_widget.refresh()
+            x = self.screen.getch()
+            if x == curses.KEY_UP:
+                if active_line == min_line:
+                    pass
+                else:
+                    active_line -= 1
+            elif x == curses.KEY_DOWN:
+                if active_line == max_line:
+                    pass
+                else:
+                    active_line += 1
 
     def _edit_ressource(self):
         if self.calendar_ressources.keys() == []:
