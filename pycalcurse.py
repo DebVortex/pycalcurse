@@ -10,6 +10,9 @@
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
 import os
+import sys
+sys.path.append('.')
+
 import curses
 import datetime
 import calendar
@@ -303,7 +306,21 @@ class PyCalCurse(object):
         new_ressource = Calendar()
         new_ressource.add('prodid', '-//My calendar product//mxm.dk//')
         new_ressource.add('version', '2.0')
-        new_cal_path = os.path.expanduser("~/.config/pycalcurse/%s.ical" % (name.lower()))
+        if ressource_type == 'local':
+            new_cal_path = os.path.expanduser("~/.config/pycalcurse/%s.ics" % (name.lower()))
+        elif ressource_type == 'webressource':
+            self._refresh_after_popup()
+            input_win.resize(4, 70)
+            input_win.border()
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Wie lautet die URL der Webressource?", curses.A_REVERSE)
+            input_win.touchwin()
+            curses.echo()
+            input_win.move(2, 1)
+            input_win.refresh()
+            new_cal_path = input_win.getstr()
+            curses.noecho()
         if os.path.exists(new_cal_path):
             input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
             input_win.addstr(2, 1, (" " * 68))
@@ -312,8 +329,9 @@ class PyCalCurse(object):
             input_win.getch()
             self._refresh_after_popup()
             return
-        with open(new_cal_path, 'w') as ressource_file:
-            ressource_file.write(new_ressource.to_ical())
+        if ressource_type == 'local':
+            with open(new_cal_path, 'w') as ressource_file:
+                ressource_file.write(new_ressource.to_ical())
         config_file_path = os.path.expanduser(
             '~/.config/pycalcurse/ressources.csv'
         )
@@ -965,7 +983,12 @@ class PyCalCurse(object):
             for line in config_file.read().split('\n'):
                 if line != '':
                     name, cal_type, ressource_path, color = line.split(',')
-                    self.calendar_ressources[name] = CalRessource(name, ressource_path, color)
+                    self.calendar_ressources[name] = CalRessource(
+                        name,
+                        ressource_path,
+                        color,
+                        ressource_type=cal_type
+                    )
 
     def _load_config_or_create(self):
         config_path = os.path.expanduser('~/.config/pycalcurse/')

@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='PyCalCurse',
     author='Max Brauer',
     author_email='max.brauer@inqbus.com',
     version=open('versions.txt').read(),
-    packages=[],
+    packages=find_packages(),
     license='WTFPL',
     long_description=open('README.rst').read(),
     scripts=['pycalcurse.py'],

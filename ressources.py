@@ -9,7 +9,7 @@
 # To Public License, Version 2, as published by Sam Hocevar. See
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
-import os
+from urllib import urlopen
 
 from icalendar import Calendar
 
@@ -24,7 +24,8 @@ class CalRessource(dict):
         self.color = COLOR_DICT[color]
         self.name = name
         if self.ressource_type == 'webressource':
-            pass
+            webcalendar = urlopen(ressouce_path)
+            self.ical = Calendar.from_ical(webcalendar.read())
         elif self.ressource_type == 'local':
             with open(self.ressouce_path, 'rb') as cal_file:
                 self.ical = Calendar.from_ical(cal_file.read())
