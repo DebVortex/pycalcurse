@@ -1040,3 +1040,4 @@ if __name__ == '__main__':
         scr.input_loop()
     finally:
         curses.endwin()
+        os.system("clear")
