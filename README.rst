@@ -22,7 +22,7 @@ ToDo's:
 =======
 
 * change default language from german to english
-* make size scaleable
+* make size scaleable (target: 0.2)
 * add multilingual support
-* several views (e.g. a week-view)
+* several views (e.g. a week-view) (target: 0.3)
 * refactor, refactor, refactor ...
