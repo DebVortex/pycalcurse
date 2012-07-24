@@ -24,8 +24,11 @@ class CalRessource(dict):
         self.color = COLOR_DICT[color]
         self.name = name
         if self.ressource_type == 'webressource':
-            webcalendar = urlopen(ressouce_path)
-            self.ical = Calendar.from_ical(webcalendar.read())
+            try:
+                webcalendar = urlopen(ressouce_path)
+                self.ical = Calendar.from_ical(webcalendar.read())
+            except IOError:
+                self.ical = Calendar()
         elif self.ressource_type == 'local':
             with open(self.ressouce_path, 'rb') as cal_file:
                 self.ical = Calendar.from_ical(cal_file.read())
