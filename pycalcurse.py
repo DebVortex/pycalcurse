@@ -691,7 +691,7 @@ class PyCalCurse(object):
                 self._refresh_after_popup()
                 return
             elif x in [ord('y'), ord('j')]:
-                if self.calendar_ressources[choosen_ressource].ressource_type == 'webressource':
+                if self.calendar_ressources[choosen_ressource].ressource_type == 'local':
                     os.remove(self.calendar_ressources[choosen_ressource].ressouce_path)
                 del self.calendar_ressources[choosen_ressource]
                 config_file_path = os.path.expanduser(
