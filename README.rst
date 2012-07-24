@@ -21,7 +21,6 @@ Requirements
 ToDo's:
 =======
 
-* handle webressources
 * change default language from german to english
 * make size scaleable
 * add multilingual support
