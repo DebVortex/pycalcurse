@@ -13,7 +13,7 @@ import curses
 
 DAY_DICT = {
     0: ['Montag', 'Mo'],
-    1: ['Dienstag' 'Di'],
+    1: ['Dienstag', 'Di'],
     2: ['Mittwoch', 'Mi'],
     3: ['Donnerstag', 'Do'],
     4: ['Freitag', 'Fr'],
