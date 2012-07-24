@@ -10,8 +10,6 @@
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
 import os
-import sys
-sys.path.append('.')
 
 import curses
 import datetime
@@ -194,16 +192,25 @@ class PyCalCurse(object):
         line_pos = 2
         checkbox_pos = {}
         for ressource in self.calendar_ressources:
-            ressource_checkbox = CheckboxWidget(
-                input_win,
-                line_pos,
-                1,
-                ressource
-            )
-            checkbox_pos[line_pos] = [ressource_checkbox,
-                self.calendar_ressources[ressource]
-            ]
-            line_pos += 1
+            if self.calendar_ressources[ressource].ressource_type == 'local':
+                ressource_checkbox = CheckboxWidget(
+                    input_win,
+                    line_pos,
+                    1,
+                    ressource
+                )
+                checkbox_pos[line_pos] = [ressource_checkbox,
+                    self.calendar_ressources[ressource]
+                ]
+                line_pos += 1
+        if checkbox_pos.keys() == []:
+            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
+            input_win.addstr(2, 1, (" " * 68))
+            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
+            input_win.addstr(2, 1, "Es wurde bisher keine lokale Ressource angelegt.")
+            input_win.getch()
+            self._refresh_after_popup()
+            return
         first_pos = min(checkbox_pos.keys())
         last_pos = max(checkbox_pos.keys())
         curent_pos = first_pos
