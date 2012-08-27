@@ -9,8 +9,12 @@
 # To Public License, Version 2, as published by Sam Hocevar. See
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
+import curses
+
 
 class CheckboxWidget(object):
+    """
+    """
 
     possile_modes = {
         'square': '[ ]',
@@ -35,25 +39,37 @@ class CheckboxWidget(object):
         self.x_pos = x_pos
         self.y_pos = y_pos
         self.label = label
-        self.mode = self.possile_modes[mode]
+        self.mode = self.possile_modes.get(mode, '( )')
         self.symbol = symbol
         self.active = False
         self._place_widget_in_window()
 
     def curly(self):
+        """ Change mode to curly {}
+        """
         self.mode = self.possile_modes['curly']
 
     def round(self):
+        """ Change mode to round ()
+        """
         self.mode = self.possile_modes['round']
 
     def square(self):
+        """ Change mode to square []
+        """
         self.mode = self.possile_modes['square']
 
     def toggle(self):
+        """ Toggle active state.
+
+        If active, set to inactive. If inactive, set to active.
+        """
         self.active = not self.active
         self._place_widget_in_window()
 
     def _place_widget_in_window(self):
+        """ Generate the String for the widget.
+        """
         self.window.addstr(
             self.x_pos,
             self.y_pos,
@@ -66,3 +82,17 @@ class CheckboxWidget(object):
                 self.symbol
             )
         self.window.refresh()
+
+
+class InfoBoxWidget(object):
+    """
+    """
+
+    def __init__(self, height, width, x_pos, y_pos, label, text):
+        info_win = curses.newwin(height, width, x_pos, y_pos)
+        info_win.border()
+        info_win.addstr(1, 1, "".join([" " for x in range(width - 2)]), curses.A_REVERSE)
+        info_win.addstr(1, 1, label, curses.A_REVERSE)
+        info_win.addstr(2, 1, text)
+        info_win.getch()
+        del self
