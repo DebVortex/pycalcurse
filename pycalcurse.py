@@ -18,7 +18,7 @@ from icalendar import Calendar, Event
 
 from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION, INPUT_COLOR_DICT, \
     COLOR_DICT_REVERSE, COLOR_DICT
-from widgets import CheckboxWidget
+from widgets import MultiCheckboxWidget, InfoBoxWidget, InputBoxWidget, KeyInputWidget
 from ressources import CalRessource
 
 
@@ -132,119 +132,65 @@ class PyCalCurse(object):
             self.info_widget.refresh()
 
     def _add_event(self):
-        input_win = curses.newwin(4, 70, 10, 5)
-        input_win.border()
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
         if self.calendar_ressources.keys() == []:
-            input_win.addstr(1, 1, "Noch keine Ressource vorhanden!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "Bitte legen sie zuerst eine Ressource an.")
-            input_win.getch()
+            InfoBoxWidget(4, 70, 10, 5,
+                "Noch keine Ressource vorhanden!", "Bitte legen sie zuerst eine Ressource an."
+            )
             self._refresh_after_popup()
             return
-        input_win.addstr(1, 1, "Bezeichnung des Events", curses.A_REVERSE)
-        input_win.touchwin()
-        curses.echo()
-        input_win.move(2, 1)
-        input_win.refresh()
-        name = input_win.getstr()
-        if name == '':
-            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            input_win.addstr(2, 1, (" " * 68))
-            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "Der Name der Ressource darf nicht leer sein.")
-            input_win.getch()
-            self._refresh_after_popup()
-            return
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(2, 1, (" " * 68))
-        input_win.addstr(1, 1, "Beginn des Termines (HH:MM)", curses.A_REVERSE)
-        input_win.move(2, 1)
-        start_time = self._time_input(input_win)
-        if not start_time:
-            self._refresh_after_popup()
-            return
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(2, 1, (" " * 68))
-        input_win.addstr(1, 1, "Ende des Termines (HH:MM)", curses.A_REVERSE)
-        input_win.move(2, 1)
-        end_time = self._time_input(input_win)
-        if not end_time:
+        name = ''
+        while name == '':
+            name = InputBoxWidget(4, 70, 10, 5, "Bezeichnung des Events").getstr()
+
+            if name == '':
+                InfoBoxWidget(4, 70, 10, 5, "Fehler!", "Der Name der Ressource darf nicht leer sein.")
+
+        start_time = ''
+        end_time = ''
+        while start_time == '' and end_time == '':
+            while start_time == '':
+                time_string = InputBoxWidget(4, 70, 10, 5, "Beginn des Termines (HH:MM)").getstr()
+                start_time = self._time_input(time_string)
+
+            while end_time == '':
+                time_string = InputBoxWidget(4, 70, 10, 5, "Ende des Termines (HH:MM)").getstr()
+                end_time = self._time_input(time_string)
+
+            if end_time < start_time:
+                InfoBoxWidget(4, 70, 10, 5, "Fehlerhafte eingabe!", "Endzeit darf nicht vor Startzeit liegen")
+                start_time = ''
+                end_time = ''
+
+        line_pos = 2
+        checkbox_information = {}
+        for ressource in self.calendar_ressources:
+            if self.calendar_ressources[ressource].ressource_type == 'local':
+                checkbox_information[line_pos] = [
+                    self.calendar_ressources[ressource],
+                    self.calendar_ressources[ressource].name
+                ]
+                line_pos += 1
+
+        if checkbox_information.keys() == []:
+            InfoBoxWidget(4, 70, 10, 5, "Fehler!", "Es wurde bisher keine lokale Ressource angelegt.")
             self._refresh_after_popup()
             return
 
-        if end_time < start_time:
-            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            input_win.addstr(2, 1, (" " * 68))
-            input_win.addstr(1, 1, "Fehlerhafte eingabe!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "Endzeit darf nicht vor Startzeit liegen")
-            input_win.getch()
-            self._refresh_after_popup()
-            return
-        input_win.clear()
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(2, 1, (" " * 68))
-        input_win.resize((3 + len(self.calendar_ressources)), 70)
-        input_win.border()
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(2, 1, (" " * 68))
-        input_win.addstr(1, 1, "In welche Kalender speichern?", curses.A_REVERSE)
-        curses.noecho()
-        line_pos = 2
-        checkbox_pos = {}
-        for ressource in self.calendar_ressources:
-            if self.calendar_ressources[ressource].ressource_type == 'local':
-                ressource_checkbox = CheckboxWidget(
-                    input_win,
-                    line_pos,
-                    1,
-                    ressource
-                )
-                checkbox_pos[line_pos] = [ressource_checkbox,
-                    self.calendar_ressources[ressource]
-                ]
-                line_pos += 1
-        if checkbox_pos.keys() == []:
-            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            input_win.addstr(2, 1, (" " * 68))
-            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "Es wurde bisher keine lokale Ressource angelegt.")
-            input_win.getch()
-            self._refresh_after_popup()
-            return
-        first_pos = min(checkbox_pos.keys())
-        last_pos = max(checkbox_pos.keys())
-        curent_pos = first_pos
-        input_win.move(curent_pos, 2)
-        input_win.refresh()
-        curses.curs_set(2)
-        x = 0
-        while x != 10:  # use 10 for 'Enter', because curses.KEY_ENTER is 343
-                        # but getch get 10 from the key
-            x = self.screen.getch()
-            if x == 32:  # use 32 for 'Space', because there is no KEY_SPACE
-                checkbox_pos[curent_pos][0].toggle()
-                input_win.move(curent_pos, 2)
-                input_win.refresh()
-            if x == curses.KEY_UP:
-                if curent_pos != first_pos:
-                    curent_pos -= 1
-                    input_win.move(curent_pos, 2)
-                    input_win.refresh()
-            if x == curses.KEY_DOWN:
-                if curent_pos != last_pos:
-                    curent_pos += 1
-                    input_win.move(curent_pos, 2)
-                    input_win.refresh()
-        curses.curs_set(0)
+        multi_widget = MultiCheckboxWidget(
+            self.screen,
+            3 + len(self.calendar_ressources), 70, 10, 5,
+            "In welche Kalender speichern?",
+            checkbox_information
+        )
 
         new_event = Event()
         new_event.add('summary', name)
         new_event.add('dtstart', start_time)
         new_event.add('dtend', end_time)
         choosen_ressources = []
-        for pos in checkbox_pos.keys():
-            if checkbox_pos[pos][0].active:
-                choosen_ressources.append(checkbox_pos[pos][1])
+        for pos in multi_widget.checkboxes.keys():
+            if multi_widget.checkboxes[pos][0].active:
+                choosen_ressources.append(multi_widget.checkboxes[pos][1])
         for ressource in choosen_ressources:
             ressource.ical.add_component(new_event)
             ressource.save()
@@ -254,60 +200,31 @@ class PyCalCurse(object):
         self.included_cal_widget = None
 
     def _add_ressource(self):
-        input_win = curses.newwin(4, 70, 10, 5)
-        input_win.border()
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(1, 1, "Namen der Ressource eingeben.", curses.A_REVERSE)
-        input_win.touchwin()
-        curses.echo()
-        input_win.move(2, 1)
-        input_win.refresh()
-        name = input_win.getstr()
-        if name == '':
-            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            input_win.addstr(2, 1, (" " * 68))
-            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "Der Name der Ressource darf nicht leer sein.")
-            input_win.getch()
-            self._refresh_after_popup()
-            return
-        curses.noecho()
+        name = ''
+        while name == '':
+            name = InputBoxWidget(4, 70, 10, 5, "Namen der Ressource eingeben.").getstr()
+            if name == '':
+                InfoBoxWidget(4, 70, 10, 5, "Fehler!", "Der Name der Ressource darf nicht leer sein.")
 
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(2, 1, (" " * 68))
-        input_win.addstr(
-            1,
-            1,
-            "Eine Locale oder eine Webressource anlegen?",
-            curses.A_REVERSE
-        )
-        input_win.addstr(2, 1, "l = locale Ressource, w = webbasierte Ressource")
-        input_win.refresh()
+        local_or_remote_win = KeyInputWidget(4, 70, 10, 5,
+            "Eine Locale oder eine Webressource anlegen?", "l = locale Ressource, w = webbasierte Ressource")
         x = 0
         while not x in [ord('l'), ord('w')]:
-            x = input_win.getch()
+            x = local_or_remote_win.getch()
         if x == ord('l'):
             ressource_type = "local"
         elif x == ord('w'):
             ressource_type = "webressource"
+        self._refresh_after_popup()
 
-        input_win.resize(5, 70)
-        input_win.border()
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(2, 1, (" " * 68))
-        input_win.addstr(3, 1, (" " * 68))
-        input_win.addstr(
-            1,
-            1,
+        color_win = KeyInputWidget(5, 70, 10, 5,
             "In welcher Farbe sollen die Einträge dargestellt werden?",
-            curses.A_REVERSE
+            ["0 = Normal, 1 = Schwarz, 2 = Blau, 3 = Cyan, 4 = Gruen, 5 = Magenta",
+            "6 = Rot, 7 = Weiss, 8 = Gelb"]
         )
-        input_win.addstr(2, 1, "0 = Normal, 1 = Schwarz, 2 = Blau, 3 = Cyan, 4 = Gruen, 5 = Magenta")
-        input_win.addstr(3, 1, "6 = Rot, 7 = Weiss, 8 = Gelb")
-        input_win.refresh()
         x = 0
         while not x in [ord(str(num)) for num in range(9)]:
-            x = input_win.getch()
+            x = color_win.getch()
         color = INPUT_COLOR_DICT[x]
 
         new_ressource = Calendar()
@@ -317,25 +234,15 @@ class PyCalCurse(object):
             new_cal_path = os.path.expanduser("~/.config/pycalcurse/%s.ics" % (name.lower()))
         elif ressource_type == 'webressource':
             self._refresh_after_popup()
-            input_win.resize(4, 70)
-            input_win.border()
-            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            input_win.addstr(2, 1, (" " * 68))
-            input_win.addstr(1, 1, "Wie lautet die URL der Webressource?", curses.A_REVERSE)
-            input_win.touchwin()
-            curses.echo()
-            input_win.move(2, 1)
-            input_win.refresh()
-            new_cal_path = input_win.getstr()
-            curses.noecho()
+            new_cal_path = ''
+            while new_cal_path == '':
+                url_win = InputBoxWidget(4, 70, 10, 5, "Wie lautet die URL der Webressource?")
+                new_cal_path = url_win.getstr()
+                if new_cal_path == '':
+                    InfoBoxWidget(4, 70, 10, 5, "Fehler!", "Die Url darf nicht leer sein.")
         if os.path.exists(new_cal_path):
-            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            input_win.addstr(2, 1, (" " * 68))
-            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "Der Kalender existiert bereits.")
-            input_win.getch()
             self._refresh_after_popup()
-            return
+            InfoBoxWidget(4, 70, 10, 5, "Fehler!", "Der Kalender existiert bereits.")
         if ressource_type == 'local':
             with open(new_cal_path, 'w') as ressource_file:
                 ressource_file.write(new_ressource.to_ical())
@@ -351,16 +258,12 @@ class PyCalCurse(object):
         self.included_cal_widget = None
 
     def _edit_ressource_or_event(self):
-        input_win = curses.newwin(4, 70, 10, 5)
-        input_win.border()
-        input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-        input_win.addstr(1, 1, "Ein Event oder eine Ressource bearbeiten?", curses.A_REVERSE)
-        input_win.addstr(2, 1, "a = Event, r = Ressource")
-        input_win.touchwin()
-        input_win.refresh()
+        key_win = KeyInputWidget(4, 70, 10, 5,
+            "Ein Event oder eine Ressource bearbeiten?",
+            "a = Event, r = Ressource")
         x = 0
         while not x in [ord('a'), ord('r')]:
-            x = input_win.getch()
+            x = key_win.getch()
         if x == ord('a'):
             self._refresh_after_popup()
             self._edit_event()
@@ -376,13 +279,7 @@ class PyCalCurse(object):
                 [events_of_active_day.append([event, ressource.color]) for event in \
                     ressource[self.active_day.isoformat()]]
         if events_of_active_day == []:
-            input_win = curses.newwin(4, 70, 10, 5)
-            input_win.border()
-            input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            input_win.addstr(2, 1, (" " * 68))
-            input_win.addstr(1, 1, "Fehler!", curses.A_REVERSE)
-            input_win.addstr(2, 1, "An diesem Tag gibt es keine Einträge.")
-            input_win.getch()
+            InfoBoxWidget(4, 70, 10, 5, "Fehler!", "An diesem Tag gibt es keine Einträge.")
             self._refresh_after_popup()
             return
         events_of_active_day.sort(key=lambda a: a[0]['DTSTART'].dt)
@@ -719,9 +616,9 @@ class PyCalCurse(object):
                 return
         self.included_cal_widget.refresh()
 
-    def _time_input(self, window):
+    def _time_input(self, time_string):
         try:
-            start_time_hour, start_time_min = window.getstr().split(":")
+            start_time_hour, start_time_min = time_string.split(":")
             time = datetime.datetime(
                 self.active_day.year,
                 self.active_day.month,
@@ -730,12 +627,12 @@ class PyCalCurse(object):
                 int(start_time_min)
             )
         except:
-            window.addstr(1, 1, (" " * 68), curses.A_REVERSE)
-            window.addstr(2, 1, (" " * 68))
-            window.addstr(1, 1, "Fehlerhafte Eingabe!", curses.A_REVERSE)
-            window.addstr(2, 1, "falsches Eingabeformat")
-            window.getch()
-            return None
+            InfoBoxWidget(
+                4, 70, 10, 5,
+                "Fehler!",
+                "Falsches Eingabeformat oder Feld ist leer."
+            )
+            time = ''
         return time
 
     def _show_license_box(self):
