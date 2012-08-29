@@ -10,6 +10,7 @@
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
 import os
+import signal
 
 import curses
 import datetime
@@ -35,6 +36,7 @@ class PyCalCurse(object):
         self.linenumber_of_calwidget = 0
         self.calendar_ressources = {}
         self._key_infos = 1
+        signal.signal(signal.SIGWINCH, self._repaint_after_term_size_change)
 
     def input_loop(self):
         x = 0
@@ -929,6 +931,9 @@ class PyCalCurse(object):
         curses.init_pair(curses.COLOR_RED, curses.COLOR_RED, -1)
         curses.init_pair(curses.COLOR_WHITE, curses.COLOR_WHITE, -1)
         curses.init_pair(curses.COLOR_YELLOW, curses.COLOR_YELLOW, -1)
+
+    def _repaint_after_term_size_change(self, signum, frame):
+        pass
 
 
 if __name__ == '__main__':
