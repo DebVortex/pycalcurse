@@ -89,7 +89,10 @@ class PyCalCurse(object):
             self._init_colors()
             self.screen.keypad(1)
             curses.noecho()
-            curses.curs_set(0)
+            try:
+                curses.curs_set(0)
+            except:
+                pass
             curses.resize_term(24, 80)
             self.screen.clear()
             self.screen.refresh()
