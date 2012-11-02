@@ -14,13 +14,15 @@ import signal
 
 import curses
 import datetime
-import calendar
 from icalendar import Calendar, Event
 
-from constants import DAY_DICT, MONTH_DICT, CALENDAR_DAY_POSITION, INPUT_COLOR_DICT, \
-    COLOR_DICT_REVERSE, COLOR_DICT
-from widgets import MultiCheckboxWidget, InfoBoxWidget, InputBoxWidget, KeyInputWidget
+from constants import DAY_DICT, MONTH_DICT, \
+    INPUT_COLOR_DICT, COLOR_DICT_REVERSE, COLOR_DICT
+from widgets import MultiCheckboxWidget, InfoBoxWidget, InputBoxWidget, \
+    KeyInputWidget
+from curses_windows import CalendarWindow
 from ressources import CalRessource
+from utils import term_size, centralized_pos
 
 
 class PyCalCurse(object):
@@ -29,13 +31,14 @@ class PyCalCurse(object):
         self.today = datetime.date.today()
         self.active_day = self.today
         self.screen = None
-        self.calendar_widget = None
+        self.calendar_window = None
         self.event_widget = None
         self.info_widget = None
         self.included_cal_widget = None
         self.linenumber_of_calwidget = 0
         self.calendar_ressources = {}
         self._key_infos = 1
+        self.term_size = term_size()
         signal.signal(signal.SIGWINCH, self._repaint_after_term_size_change)
 
     def input_loop(self):
@@ -43,7 +46,7 @@ class PyCalCurse(object):
         while x != ord('q'):
             self.init_main_screen()
             self.build_included_cal_widget()
-            self.build_calendar_widget()
+            self.build_calendar_window()
             self.build_event_widget()
             self.build_info_widget()
             self._actualise_calendar_widget()
@@ -92,25 +95,18 @@ class PyCalCurse(object):
             self.screen.keypad(1)
             curses.noecho()
             curses.curs_set(0)
-            curses.resize_term(24, 80)
+            curses.resize_term(self.term_size[0], self.term_size[1])
             self.screen.clear()
             self.screen.refresh()
         else:
             self.screen.refresh()
 
-    def build_calendar_widget(self):
-        if not self.calendar_widget:
-            self.calendar_widget = curses.newwin(12, 24, 0, 56)
-            self.calendar_widget.border()
-            self.calendar_widget.addstr(
-                1,
-                self._centralized_pos(24, "Kalender"),
-                "Kalender"
-            )
-            self.calendar_widget.addstr(2, 1, "----------------------")
-            self.calendar_widget.refresh()
+    def build_calendar_window(self):
+        if not self.calendar_window:
+            self.calendar_window = CalendarWindow(self.term_size)
+            self.calendar_window.refresh()
         else:
-            self.calendar_widget.refresh()
+            self.calendar_window.refresh()
 
     def build_event_widget(self):
         if not self.event_widget:
@@ -196,7 +192,7 @@ class PyCalCurse(object):
         for ressource in choosen_ressources:
             ressource.ical.add_component(new_event)
             ressource.save()
-        self.calendar_widget = None
+        self.calendar_window = None
         self.event_widget = None
         self.info_widget = None
         self.included_cal_widget = None
@@ -254,7 +250,7 @@ class PyCalCurse(object):
         with open(config_file_path, 'a') as config_file:
             config_string = "%s,%s,%s,%s\n" % (name, ressource_type, new_cal_path, color)
             config_file.write(config_string)
-        self.calendar_widget = None
+        self.calendar_window = None
         self.event_widget = None
         self.info_widget = None
         self.included_cal_widget = None
@@ -357,7 +353,7 @@ class PyCalCurse(object):
                         ressource.save()
                         self.info_widget = None
                         self.event_widget = None
-                        self.calendar_widget = None
+                        self.calendar_window = None
                         self.included_cal_widget = None
                         return
             curses.noecho()
@@ -400,7 +396,7 @@ class PyCalCurse(object):
                         ressource.save()
                         self.info_widget = None
                         self.event_widget = None
-                        self.calendar_widget = None
+                        self.calendar_window = None
                         self.included_cal_widget = None
                         return
         elif x == ord('3'):  # Loeschen
@@ -428,7 +424,7 @@ class PyCalCurse(object):
                             ressource.save()
                             self.info_widget = None
                             self.event_widget = None
-                            self.calendar_widget = None
+                            self.calendar_window = None
                             self.included_cal_widget = None
                             return
 
@@ -525,7 +521,7 @@ class PyCalCurse(object):
                 )
             config_file.write(''.join(config_string_list))
             config_file.close()
-            self.calendar_widget = None
+            self.calendar_window = None
             self.event_widget = None
             self.info_widget = None
             self.included_cal_widget = None
@@ -567,7 +563,7 @@ class PyCalCurse(object):
                 )
             config_file.write(''.join(config_string_list))
             config_file.close()
-            self.calendar_widget = None
+            self.calendar_window = None
             self.event_widget = None
             self.info_widget = None
             self.included_cal_widget = None
@@ -609,7 +605,7 @@ class PyCalCurse(object):
                     )
                     config_file.write(''.join(config_string_list))
                 config_file.close()
-                self.calendar_widget = None
+                self.calendar_window = None
                 self.event_widget = None
                 self.info_widget = None
                 self.included_cal_widget = None
@@ -655,7 +651,7 @@ class PyCalCurse(object):
             curses.A_REVERSE
         )
         info_box.addstr(3,
-            self._centralized_pos(69, version),
+            centralized_pos(69, version),
             version
         )
         info_box.addstr(6,
@@ -798,38 +794,38 @@ class PyCalCurse(object):
         # Set the calendar to the actual date
 
     def _actualise_calendar_widget(self):
-        for line_to_clear in [5, 6, 7, 8, 9, 10]:
-            self.calendar_widget.addstr(line_to_clear, 1, (" " * 21))
-        self.calendar_widget.addstr(
-            3,
-            8,
-            "%s %s" % (
-                MONTH_DICT[self.active_day.month][1],
-                self.active_day.year
-            )
-        )
-        self.calendar_widget.addstr(4, 1, " MO DI MI DO FR SA SO ")
-        days_of_the_month = calendar.monthrange(
-            self.active_day.year, self.active_day.month
-        )[1]
-        self.linenumber_of_calwidget = 5
-        for day_number in range(1, days_of_the_month + 1):
-            day = datetime.date(self.active_day.year, self.active_day.month, day_number)
-            if day == self.active_day:
-                format = curses.A_REVERSE
-            elif self._event_on_day(day):
-                format = curses.A_BOLD
-            else:
-                format = curses.A_NORMAL
-            self.calendar_widget.addstr(
-                self.linenumber_of_calwidget,
-                CALENDAR_DAY_POSITION[day.weekday()],
-                self._day_len_check(day.day),
-                format
-            )
-            if day.weekday() == 6:
-                self.linenumber_of_calwidget += 1
-        self.calendar_widget.refresh()
+        #for line_to_clear in [5, 6, 7, 8, 9, 10]:
+        #    self.calendar_window.addstr(line_to_clear, 1, (" " * 21))
+        #self.calendar_window.addstr(
+        #    3,
+        #    8,
+        #    "%s %s" % (
+        #        MONTH_DICT[self.active_day.month][1],
+        #        self.active_day.year
+        #    )
+        #)
+        #self.calendar_window.addstr(4, 1, " MO DI MI DO FR SA SO ")
+        #days_of_the_month = calendar.monthrange(
+        #    self.active_day.year, self.active_day.month
+        #)[1]
+        #self.linenumber_of_calwidget = 5
+        #for day_number in range(1, days_of_the_month + 1):
+        #    day = datetime.date(self.active_day.year, self.active_day.month, day_number)
+        #    if day == self.active_day:
+        #        format = curses.A_REVERSE
+        #    elif self._event_on_day(day):
+        #        format = curses.A_BOLD
+        #    else:
+        #        format = curses.A_NORMAL
+        #    self.calendar_window.addstr(
+        #        self.linenumber_of_calwidget,
+        #        CALENDAR_DAY_POSITION[day.weekday()],
+        #        self._day_len_check(day.day),
+        #        format
+        #    )
+        #    if day.weekday() == 6:
+        #        self.linenumber_of_calwidget += 1
+        self.calendar_window.refresh()
 
     def _actualise_event_widget(self):
         self.event_widget.clear()
@@ -911,15 +907,12 @@ class PyCalCurse(object):
     def _refresh_after_popup(self):
         self.included_cal_widget.touchwin()
         self.included_cal_widget.refresh()
-        self.calendar_widget.touchwin()
-        self.calendar_widget.refresh()
+        self.calendar_window.touchwin()
+        self.calendar_window.refresh()
         self.info_widget.touchwin()
         self.info_widget.refresh()
         self.event_widget.touchwin()
         self.event_widget.refresh()
-
-    def _centralized_pos(self, width_or_hight, input_text):
-        return ((width_or_hight - len(input_text)) / 2)
 
     def _init_colors(self):
         curses.start_color()
@@ -933,12 +926,24 @@ class PyCalCurse(object):
         curses.init_pair(curses.COLOR_YELLOW, curses.COLOR_YELLOW, -1)
 
     def _repaint_after_term_size_change(self, signum, frame):
-        pass
+        #curses.resize_term(self.term_size[0], self.term_size[1])
+        #self.screen.resize(self.term_size[0], self.term_size[1])
+        #self.screen.clear()
+        #self.screen.refresh()
+        self.calendar_window = None
+        self.event_widget = None
+        self.info_widget = None
+        self.included_cal_widget = None
+        self.build_calendar_window()
+        self.build_event_widget()
+        self.build_info_widget()
+        self.build_included_cal_widget()
 
 
 if __name__ == '__main__':
     try:
         scr = PyCalCurse()
+        signal.signal(signal.SIGWINCH, scr._repaint_after_term_size_change)
         scr.input_loop()
     finally:
         curses.endwin()
