@@ -20,7 +20,8 @@ from constants import DAY_DICT, MONTH_DICT, \
     INPUT_COLOR_DICT, COLOR_DICT_REVERSE, COLOR_DICT
 from widgets import MultiCheckboxWidget, InfoBoxWidget, InputBoxWidget, \
     KeyInputWidget
-from curses_windows import CalendarWindow
+from curses_windows import CalendarWindow, RessourceWindow, EventWindow, \
+    InfoWindow
 from ressources import CalRessource
 from utils import term_size, centralized_pos
 
@@ -32,12 +33,11 @@ class PyCalCurse(object):
         self.active_day = self.today
         self.screen = None
         self.calendar_window = None
-        self.event_widget = None
-        self.info_widget = None
-        self.included_cal_widget = None
+        self.event_window = None
+        self.info_window = None
+        self.ressource_window = None
         self.linenumber_of_calwidget = 0
         self.calendar_ressources = {}
-        self._key_infos = 1
         self.term_size = term_size()
         signal.signal(signal.SIGWINCH, self._repaint_after_term_size_change)
 
@@ -45,32 +45,44 @@ class PyCalCurse(object):
         x = 0
         while x != ord('q'):
             self.init_main_screen()
-            self.build_included_cal_widget()
+            self.build_ressource_window()
             self.build_calendar_window()
-            self.build_event_widget()
-            self.build_info_widget()
-            self._actualise_calendar_widget()
-            self._actualise_event_widget()
+            self.build_event_window()
+            self.build_info_window()
+            self.calendar_window._actualise_calendar_window(
+                self.active_day, self.calendar_ressources
+            )
+            self.event_window._actualise_event_window(
+                self.active_day, self.calendar_ressources
+            )
             if self.active_day == self.today:
                 self._today()
             x = self.screen.getch()
             if x == curses.KEY_RIGHT or x == ord('l'):
                 self.active_day = self.active_day + datetime.timedelta(1)
-            self._actualise_event_widget()
+                self.event_window._actualise_event_window(
+                    self.active_day, self.calendar_ressources
+                )
             if x == curses.KEY_LEFT or x == ord('h'):
                 self.active_day = self.active_day - datetime.timedelta(1)
-                self._actualise_event_widget()
+                self.event_window._actualise_event_window(
+                    self.active_day, self.calendar_ressources
+                )
             if x == curses.KEY_UP or x == ord('k'):
                 self.active_day = self.active_day - datetime.timedelta(7)
-                self._actualise_event_widget()
+                self.event_window._actualise_event_window(
+                    self.active_day, self.calendar_ressources
+                )
             if x == curses.KEY_DOWN or x == ord('j'):
                 self.active_day = self.active_day + datetime.timedelta(7)
-                self._actualise_event_widget()
+                self.event_window._actualise_event_window(
+                    self.active_day, self.calendar_ressources
+                )
             if x == ord('t'):
                 self.active_day = self.today
             if x == ord('m'):
-                self._key_infos += 1
-                self._generate_key_infos()
+                self.info_window._key_infos += 1
+                self.info_window._generate_key_infos()
             if x == ord('a'):
                 self._add_event()
             if x == ord('r'):
@@ -80,7 +92,7 @@ class PyCalCurse(object):
             if x == ord('i'):
                 self._show_license_box()
         self._write_to_info_line("PyCalCurse beenden? [j/n]")
-        self.info_widget.refresh()
+        self.info_window.refresh()
         x = self.screen.getch()
         if x == ord('j') or x == ord('y'):
             curses.endwin()
@@ -108,26 +120,33 @@ class PyCalCurse(object):
         else:
             self.calendar_window.refresh()
 
-    def build_event_widget(self):
-        if not self.event_widget:
-            self.event_widget = curses.newwin(19, 56, 0, 0)
-            self.event_widget.border()
-            self.event_widget.refresh()
+    def build_event_window(self):
+        if not self.event_window:
+            self.event_window = EventWindow(self.term_size)
+            #self.event_window = curses.newwin(19, 56, 0, 0)
+            #self.event_window.border()
+            self.event_window.refresh()
         else:
-            self.event_widget.refresh()
+            self.event_window.refresh()
 
-    def build_info_widget(self):
-        if not self.info_widget:
-            self.info_widget = curses.newwin(5, 56, 19, 0)
-            self.info_widget.addstr(1,
-                1,
-                (" " * 54),
-                curses.A_REVERSE)
-            self.info_widget.border()
-            self.info_widget.refresh()
-            self._generate_key_infos()
+    def build_info_window(self):
+        if not self.info_window:
+            self.info_window = InfoWindow(self.term_size)
+            self.info_window.refresh()
+            self.info_window._generate_key_infos()
         else:
-            self.info_widget.refresh()
+            self.info_window.refresh()
+
+    def build_ressource_window(self):
+        if not self.ressource_window:
+            self.ressource_window = RessourceWindow(self.term_size)
+            self._load_ressources()
+            self.ressource_window.fill_ressource_window(
+                self.calendar_ressources
+            )
+            self.ressource_window.refresh()
+        else:
+            self.ressource_window.refresh()
 
     def _add_event(self):
         if self.calendar_ressources.keys() == []:
@@ -193,9 +212,9 @@ class PyCalCurse(object):
             ressource.ical.add_component(new_event)
             ressource.save()
         self.calendar_window = None
-        self.event_widget = None
-        self.info_widget = None
-        self.included_cal_widget = None
+        self.event_window = None
+        self.info_window = None
+        self.ressource_window = None
 
     def _add_ressource(self):
         name = ''
@@ -251,9 +270,9 @@ class PyCalCurse(object):
             config_string = "%s,%s,%s,%s\n" % (name, ressource_type, new_cal_path, color)
             config_file.write(config_string)
         self.calendar_window = None
-        self.event_widget = None
-        self.info_widget = None
-        self.included_cal_widget = None
+        self.event_window = None
+        self.info_window = None
+        self.ressource_window = None
 
     def _edit_ressource_or_event(self):
         key_win = KeyInputWidget(4, 70, 10, 5,
@@ -299,7 +318,7 @@ class PyCalCurse(object):
                     coloring = curses.A_REVERSE
                 else:
                     coloring = curses.color_pair(ressource_color)
-                self.event_widget.addstr(
+                self.event_window.addstr(
                     line,
                     1,
                     "%s | %s | %s" % (
@@ -311,9 +330,9 @@ class PyCalCurse(object):
                 )
                 line += 1
             while line < 18:
-                self.event_widget.addstr(line, 1, "      |       |")
+                self.event_window.addstr(line, 1, "      |       |")
                 line += 1
-            self.event_widget.refresh()
+            self.event_window.refresh()
             x = self.screen.getch()
             if x == curses.KEY_UP:
                 if active_line == min_line:
@@ -351,10 +370,10 @@ class PyCalCurse(object):
                         index_of_ressource = ressource.ical.subcomponents.index(subcomponent)
                         ressource.ical.subcomponents[index_of_ressource].set('SUMMARY', name)
                         ressource.save()
-                        self.info_widget = None
-                        self.event_widget = None
+                        self.info_window = None
+                        self.event_window = None
                         self.calendar_window = None
-                        self.included_cal_widget = None
+                        self.ressource_window = None
                         return
             curses.noecho()
             pass
@@ -394,10 +413,10 @@ class PyCalCurse(object):
                         ressource.ical.subcomponents[index_of_ressource].set('DTSTART', start_time)
                         ressource.ical.subcomponents[index_of_ressource].set('DTEND', end_time)
                         ressource.save()
-                        self.info_widget = None
-                        self.event_widget = None
+                        self.info_window = None
+                        self.event_window = None
                         self.calendar_window = None
-                        self.included_cal_widget = None
+                        self.ressource_window = None
                         return
         elif x == ord('3'):  # Loeschen
             input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
@@ -422,10 +441,10 @@ class PyCalCurse(object):
                             index_of_ressource = ressource.ical.subcomponents.index(subcomponent)
                             del ressource.ical.subcomponents[index_of_ressource]
                             ressource.save()
-                            self.info_widget = None
-                            self.event_widget = None
+                            self.info_window = None
+                            self.event_window = None
                             self.calendar_window = None
-                            self.included_cal_widget = None
+                            self.ressource_window = None
                             return
 
     def _edit_ressource(self):
@@ -439,7 +458,7 @@ class PyCalCurse(object):
             input_win.getch()
             self._refresh_after_popup()
             return
-        self.included_cal_widget.touchwin()
+        self.ressource_window.touchwin()
         min_line = active_line = 3
         max_line = (len(self.calendar_ressources.keys()) + 2)
         x = 0
@@ -448,7 +467,7 @@ class PyCalCurse(object):
             line = 3
             for ressource in self.calendar_ressources.keys():
                 if line == active_line:
-                    self.included_cal_widget.addstr(
+                    self.ressource_window.addstr(
                         line,
                         1,
                         ressource,
@@ -456,14 +475,14 @@ class PyCalCurse(object):
                     )
                     line += 1
                 else:
-                    self.included_cal_widget.addstr(
+                    self.ressource_window.addstr(
                         line,
                         1,
                         ressource,
                         curses.color_pair(self.calendar_ressources[ressource].color)
                     )
                     line += 1
-            self.included_cal_widget.refresh()
+            self.ressource_window.refresh()
             x = self.screen.getch()
             if x == curses.KEY_UP:
                 if active_line == min_line:
@@ -487,7 +506,7 @@ class PyCalCurse(object):
             x = input_win.getch()
         if x == ord('0'):  # Exit
             self._refresh_after_popup()
-            self.included_cal_widget = None
+            self.ressource_window = None
             return
         elif x == ord('1'):  # Change name
             input_win.addstr(1, 1, (" " * 68), curses.A_REVERSE)
@@ -522,9 +541,9 @@ class PyCalCurse(object):
             config_file.write(''.join(config_string_list))
             config_file.close()
             self.calendar_window = None
-            self.event_widget = None
-            self.info_widget = None
-            self.included_cal_widget = None
+            self.event_window = None
+            self.info_window = None
+            self.ressource_window = None
             self.calendar_ressources = {}
             curses.noecho()
             return
@@ -564,9 +583,9 @@ class PyCalCurse(object):
             config_file.write(''.join(config_string_list))
             config_file.close()
             self.calendar_window = None
-            self.event_widget = None
-            self.info_widget = None
-            self.included_cal_widget = None
+            self.event_window = None
+            self.info_window = None
+            self.ressource_window = None
             self.calendar_ressources = {}
             curses.noecho()
             return
@@ -606,13 +625,13 @@ class PyCalCurse(object):
                     config_file.write(''.join(config_string_list))
                 config_file.close()
                 self.calendar_window = None
-                self.event_widget = None
-                self.info_widget = None
-                self.included_cal_widget = None
+                self.event_window = None
+                self.info_window = None
+                self.ressource_window = None
                 self.calendar_ressources = {}
                 curses.noecho()
                 return
-        self.included_cal_widget.refresh()
+        self.ressource_window.refresh()
 
     def _time_input(self, time_string):
         try:
@@ -716,71 +735,9 @@ class PyCalCurse(object):
         del info_box
         self._refresh_after_popup()
 
-    def _generate_key_infos(self):
-        if self._key_infos >= 4:
-            self._key_infos = 1
-        if self._key_infos == 1:
-            self.info_widget.addstr(2, 1, (" " * 50))
-            self.info_widget.addstr(3, 1, (" " * 50))
-            self.info_widget.addstr(2, 1, ">/l", curses.A_BOLD)
-            self.info_widget.addstr(2, 5, "naechster Tag")
-            self.info_widget.addstr(3, 1, "</h", curses.A_BOLD)
-            self.info_widget.addstr(3, 5, "vorheriger Tag")
-            self.info_widget.addstr(2, 21, "^/k", curses.A_BOLD)
-            self.info_widget.addstr(2, 25, "eine Woche zurueck")
-            self.info_widget.addstr(3, 21, "v/j", curses.A_BOLD)
-            self.info_widget.addstr(3, 25, "eine Woche vor")
-            self.info_widget.addstr(2, 45, "q", curses.A_BOLD)
-            self.info_widget.addstr(2, 47, "Beenden")
-            self.info_widget.addstr(3, 45, "m", curses.A_BOLD)
-            self.info_widget.addstr(3, 47, "mehr...")
-            self.info_widget.refresh()
-        elif self._key_infos == 2:
-            self.info_widget.addstr(2, 1, (" " * 54))
-            self.info_widget.addstr(3, 1, (" " * 54))
-            self.info_widget.addstr(2, 1, "a", curses.A_BOLD)
-            self.info_widget.addstr(2, 3, "Termin anlegen")
-            self.info_widget.addstr(3, 1, "e", curses.A_BOLD)
-            self.info_widget.addstr(3, 3, "Termin/Ressource bearbeiten")
-            self.info_widget.addstr(2, 32, "r", curses.A_BOLD)
-            self.info_widget.addstr(2, 34, "Ressource anlegen")
-            self.info_widget.addstr(3, 32, "m", curses.A_BOLD)
-            self.info_widget.addstr(3, 34, "mehr...")
-            self.info_widget.refresh()
-        elif self._key_infos == 3:
-            self.info_widget.addstr(2, 1, (" " * 54))
-            self.info_widget.addstr(3, 1, (" " * 54))
-            self.info_widget.addstr(2, 1, "t", curses.A_BOLD)
-            self.info_widget.addstr(2, 3, "zum heutigen Tag springen")
-            self.info_widget.addstr(3, 1, "m", curses.A_BOLD)
-            self.info_widget.addstr(3, 3, "mehr...")
-            self.info_widget.addstr(2, 30, "i", curses.A_BOLD)
-            self.info_widget.addstr(2, 32, "Lizenstext")
-            self.info_widget.refresh()
-
-    def build_included_cal_widget(self):
-        if not self.included_cal_widget:
-            self.included_cal_widget = curses.newwin(12, 24, 12, 56)
-            self.included_cal_widget.border()
-            self.included_cal_widget.addstr(1, 7, "Ressourcen")
-            self.included_cal_widget.addstr(2, 1, "----------------------")
-            self._load_ressources()
-            line = 3
-            for ressource in self.calendar_ressources.keys():
-
-                self.included_cal_widget.addstr(
-                    line,
-                    1,
-                    ressource,
-                    curses.color_pair(self.calendar_ressources[ressource].color))
-                line += 1
-            self.included_cal_widget.refresh()
-        else:
-            self.included_cal_widget.refresh()
-
     def _today(self):
         # Set the actual Day in the Infobar
-        self.info_widget.addstr(1, 1, \
+        self.info_window.window.addstr(1, 1, \
             "Heute ist %s der %s. %s %s" % (
                 DAY_DICT[self.today.weekday()][0], \
                 self.today.day, \
@@ -789,97 +746,20 @@ class PyCalCurse(object):
             ),
             curses.A_REVERSE
         )
-        self.info_widget.refresh()
-        self._actualise_calendar_widget()
-        # Set the calendar to the actual date
-
-    def _actualise_calendar_widget(self):
-        #for line_to_clear in [5, 6, 7, 8, 9, 10]:
-        #    self.calendar_window.addstr(line_to_clear, 1, (" " * 21))
-        #self.calendar_window.addstr(
-        #    3,
-        #    8,
-        #    "%s %s" % (
-        #        MONTH_DICT[self.active_day.month][1],
-        #        self.active_day.year
-        #    )
-        #)
-        #self.calendar_window.addstr(4, 1, " MO DI MI DO FR SA SO ")
-        #days_of_the_month = calendar.monthrange(
-        #    self.active_day.year, self.active_day.month
-        #)[1]
-        #self.linenumber_of_calwidget = 5
-        #for day_number in range(1, days_of_the_month + 1):
-        #    day = datetime.date(self.active_day.year, self.active_day.month, day_number)
-        #    if day == self.active_day:
-        #        format = curses.A_REVERSE
-        #    elif self._event_on_day(day):
-        #        format = curses.A_BOLD
-        #    else:
-        #        format = curses.A_NORMAL
-        #    self.calendar_window.addstr(
-        #        self.linenumber_of_calwidget,
-        #        CALENDAR_DAY_POSITION[day.weekday()],
-        #        self._day_len_check(day.day),
-        #        format
-        #    )
-        #    if day.weekday() == 6:
-        #        self.linenumber_of_calwidget += 1
-        self.calendar_window.refresh()
-
-    def _actualise_event_widget(self):
-        self.event_widget.clear()
-        self.event_widget.border()
-        self.event_widget.addstr(1, 1, "Von   | Bis   | Termin")
-        self.event_widget.addstr(2, 1, ("-" * 54))
-        line = 3
-        events = []
-        for ressource_name in self.calendar_ressources.keys():
-            ressource = self.calendar_ressources[ressource_name]
-            if self.active_day.isoformat() in ressource.keys():
-                [events.append([event, ressource.color]) for event in \
-                    ressource[self.active_day.isoformat()]]
-        events.sort(key=lambda a: a[0]['DTSTART'].dt)
-        for event_pair in events:
-            event = event_pair[0]
-            ressource_color = event_pair[1]
-            start_time = event['DTSTART'].dt
-            if 'DURATION' in event.keys():
-                end_time = start_time + event['DURATION'].dt
-            elif 'DTEND' in event.keys():
-                end_time = event['DTEND'].dt
-            self.event_widget.addstr(
-                line,
-                1,
-                "%s | %s | %s" % (
-                    start_time.strftime("%H:%M"),
-                    end_time.strftime("%H:%M"),
-                    event['SUMMARY'].title(),
-                ),
-                curses.color_pair(ressource_color)
-            )
-            line += 1
-        while line < 18:
-            self.event_widget.addstr(line, 1, "      |       |")
-            line += 1
-        self.event_widget.refresh()
+        self.info_window.refresh()
+        self.calendar_window._actualise_calendar_window(
+            self.active_day, self.calendar_ressources
+        )
 
     def _write_to_info_line(self, message):
-        self.info_widget.addstr(1, 1, (" " * 54), curses.A_REVERSE)
-        self.info_widget.refresh()
-        self.info_widget.addstr(1, 1, message, curses.A_REVERSE)
-        self.info_widget.refresh()
-
-    def _event_on_day(self, day):
-        for ressource in self.calendar_ressources.keys():
-            if day.isoformat() in self.calendar_ressources[ressource].keys():
-                return True
-
-    def _day_len_check(self, day):
-        if len(str(day)) == 1:
-            return "0%s" % (str(day))
-        else:
-            return str(day)
+        self.info_window.window.addstr(
+            1,
+            1,
+            (" " * (self.info_window.window.width - 2)),
+            curses.A_REVERSE)
+        self.info_window.refresh()
+        self.info_window.window.addstr(1, 1, message, curses.A_REVERSE)
+        self.info_window.refresh()
 
     def _load_ressources(self):
         with self._load_config_or_create() as config_file:
@@ -905,14 +785,14 @@ class PyCalCurse(object):
         return open(config_file_path, 'r')
 
     def _refresh_after_popup(self):
-        self.included_cal_widget.touchwin()
-        self.included_cal_widget.refresh()
+        self.ressource_window.touchwin()
+        self.ressource_window.refresh()
         self.calendar_window.touchwin()
         self.calendar_window.refresh()
-        self.info_widget.touchwin()
-        self.info_widget.refresh()
-        self.event_widget.touchwin()
-        self.event_widget.refresh()
+        self.info_window.touchwin()
+        self.info_window.refresh()
+        self.event_window.touchwin()
+        self.event_window.refresh()
 
     def _init_colors(self):
         curses.start_color()
@@ -926,18 +806,25 @@ class PyCalCurse(object):
         curses.init_pair(curses.COLOR_YELLOW, curses.COLOR_YELLOW, -1)
 
     def _repaint_after_term_size_change(self, signum, frame):
-        #curses.resize_term(self.term_size[0], self.term_size[1])
-        #self.screen.resize(self.term_size[0], self.term_size[1])
-        #self.screen.clear()
-        #self.screen.refresh()
+        self.term_size = term_size()
+        height = self.term_size[0]
+        if height < 24:
+            height = 24
+        width = self.term_size[1]
+        if width < 80:
+            width = 80
+        curses.resize_term(height, width)
+        self.screen.resize(height, width)
+        self.screen.clear()
+        self.screen.refresh()
         self.calendar_window = None
-        self.event_widget = None
-        self.info_widget = None
-        self.included_cal_widget = None
+        self.ressource_window = None
+        self.event_window = None
+        self.info_window = None
         self.build_calendar_window()
-        self.build_event_widget()
-        self.build_info_widget()
-        self.build_included_cal_widget()
+        self.build_ressource_window()
+        self.build_event_window()
+        self.build_info_window()
 
 
 if __name__ == '__main__':
