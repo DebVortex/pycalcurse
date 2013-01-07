@@ -43,6 +43,8 @@ class AbstractWindow(object):
     def refresh(self):
         self.window.refresh()
 
+    def addstr(self, *args, **kwargs):
+        self.window.addstr(*args, **kwargs)
 
 class InfoWindow(AbstractWindow):
     """
