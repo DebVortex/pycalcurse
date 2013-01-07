@@ -755,7 +755,7 @@ class PyCalCurse(object):
         self.info_window.window.addstr(
             1,
             1,
-            (" " * (self.info_window.window.width - 2)),
+            (" " * (self.info_window.width - 2)),
             curses.A_REVERSE)
         self.info_window.refresh()
         self.info_window.window.addstr(1, 1, message, curses.A_REVERSE)
