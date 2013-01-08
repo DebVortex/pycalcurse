@@ -9,6 +9,8 @@
 # To Public License, Version 2, as published by Sam Hocevar. See
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
+
+
 import curses
 import calendar
 import datetime
@@ -26,16 +28,16 @@ class AbstractWindow(object):
         """
         self.height = height
         self.width = width
-        calendar_window = curses.newwin(height, width, ypos, xpos)
-        calendar_window.border()
+        window = curses.newwin(height, width, ypos, xpos)
+        window.border()
         if name:
-            calendar_window.addstr(
+            window.addstr(
                 1,
                 centralized_pos(width, name),
                 name
             )
-            calendar_window.addstr(2, 1, "----------------------")
-        return calendar_window
+            window.addstr(2, 1, "----------------------")
+        return window
 
     def touchwin(self):
         self.window.touchwin()
@@ -43,8 +45,8 @@ class AbstractWindow(object):
     def refresh(self):
         self.window.refresh()
 
-    def addstr(self, *args, **kwargs):
-        self.window.addstr(*args, **kwargs)
+    def addstr(self, x_pos, y_pos, text, **kwargs):
+        self.window.addstr(x_pos, y_pos, text, **kwargs)
 
 class InfoWindow(AbstractWindow):
     """
@@ -169,7 +171,7 @@ class EventWindow(AbstractWindow):
                 "%s | %s | %s" % (
                     start_time.strftime("%H:%M"),
                     end_time.strftime("%H:%M"),
-                    event['SUMMARY'].title(),
+                    event['SUMMARY'].title().encode(event['SUMMARY'].encoding),
                 ),
                 curses.color_pair(ressource_color)
             )

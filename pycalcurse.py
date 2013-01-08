@@ -12,6 +12,9 @@
 import os
 import signal
 
+import locale
+locale.setlocale(locale.LC_ALL, "")
+
 import curses
 import datetime
 from icalendar import Calendar, Event
