@@ -11,7 +11,7 @@ setup(
     scripts=['pycalcurse.py'],
     url='https://github.com/DebVortex/pycalcurse',
     description='Useful towel-related stuff.',
-    setup_requires=[
+    install_requires=[
         "icalendar",
     ],
 )

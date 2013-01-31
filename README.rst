@@ -21,8 +21,8 @@ Requirements
 ToDo's:
 =======
 
+* read from pw proctected online resources (target: 0.3)
+* several views (e.g. a week-view) (target: 0.4)
 * change default language from german to english
-* make size scaleable (target: 0.2)
 * add multilingual support
-* several views (e.g. a week-view) (target: 0.3)
 * refactor, refactor, refactor ...
