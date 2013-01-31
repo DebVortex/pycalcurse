@@ -327,10 +327,11 @@ class PyCalCurse(object):
                     "%s | %s | %s" % (
                         start_time.strftime("%H:%M"),
                         end_time.strftime("%H:%M"),
-                        event['SUMMARY'].title(),
+                        event['SUMMARY'].title().encode(event['SUMMARY'].encoding),
                     ),
                     coloring
                 )
+
                 line += 1
             while line < 18:
                 self.event_window.addstr(line, 1, "      |       |")
